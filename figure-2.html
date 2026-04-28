@@ -1,0 +1,110 @@
+<html>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+#version 300 es
+
+in vec4 aPosition;
+in vec4 aVertex;
+in vec2 aTexCoord0;
+uniform mat4 ModelViewProjectionMatrix;
+
+out vec2 vST;
+
+uniform float uAngleZ;
+uniform float uAngleX;
+uniform float uAngleY;   // NEW: y-axis rotation for turntable drag
+uniform float uDeltaX;
+uniform float uDeltaY;
+uniform float uDeltaZ;
+uniform float uScaleX;
+uniform float uScaleY;
+uniform float uScaleZ;
+uniform float uLocalX;
+uniform float uLocalY;
+uniform float uLocalZ;
+
+void main()
+{
+    // Y-axis rotation matrix for turntable drag
+    mat4 ry = mat4(
+        cos(uAngleY),  0.0, sin(uAngleY), 0.0,
+        0.0,           1.0, 0.0,          0.0,
+       -sin(uAngleY),  0.0, cos(uAngleY), 0.0,
+        0.0,           0.0, 0.0,          1.0);
+
+    mat4 rz = mat4(
+        cos(uAngleZ), sin(uAngleZ), 0.0, 0.0,
+       -sin(uAngleZ), cos(uAngleZ), 0.0, 0.0,
+        0.0,          0.0,          1.0, 0.0,
+        0.0,          0.0,          0.0, 1.0);
+
+    mat4 rx = mat4(
+        1.0, 0.0,          0.0,          0.0,
+        0.0, cos(uAngleX), sin(uAngleX), 0.0,
+        0.0,-sin(uAngleX), cos(uAngleX), 0.0,
+        0.0, 0.0,          0.0,          1.0);
+
+    mat4 txyz = mat4(
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        uDeltaX, uDeltaY, uDeltaZ, 1.0);
+
+    mat4 sxyz = mat4(
+        uScaleX, 0.0,     0.0,     0.0,
+        0.0,     uScaleY, 0.0,     0.0,
+        0.0,     0.0,     uScaleZ, 0.0,
+        0.0,     0.0,     0.0,     1.0);
+
+    mat4 local = mat4(
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        uLocalX, uLocalY, uLocalZ, 1.0);
+
+    // ry applied outermost so drag rotation wraps all per-object transforms
+    gl_Position = ry * rx *txyz *  rz * local * sxyz * aPosition;
+    gl_PointSize = 10.0;
+    vST = aTexCoord0.st;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+#version 300 es
+
+precision mediump float;
+uniform float uUseTexture;
+uniform vec4 uColor;
+
+in vec2 vST;
+uniform sampler2D u_texture;
+out vec4 outColor;
+
+void main()
+{
+    if (uUseTexture > 0.5){
+        outColor = texture(u_texture, vST);
+    }
+    else {
+        outColor = uColor;
+    }
+    
+}
+</script>
+<video id="led-video" src="../downloads/superhero.mp4"
+       loop autoplay muted playsinline
+       style="display:none"></video>
+<canvas id="gl-canvas" width="512" height="512"></canvas>
+<script src="initShaders.js"></script>
+<script src="MVnew.js"></script>
+
+<script src="lenrender.js"></script>
+
+<div>Delta along X-Axis  <input id="DeltaX"  type="range" min="-1.5" max="1.5" step="0.1" value="0"/></div>
+<div>Delta along Y-Axis  <input id="DeltaY"  type="range" min="-1.5" max="1.5" step="0.1" value="0"/></div>
+<div>Right Arm           <input id="ArmRight" type="range" min="0" max="180" step="1" value="0"/></div>
+<div>Left Arm            <input id="ArmLeft"  type="range" min="0" max="180" step="1" value="0"/></div>
+<!-- Reset button returns drag rotation to front-facing (0,0) -->
+<div><button id="Reset">Reset View</button> <span style="font-size:0.85em;color:#555">— or drag the canvas to rotate</span></div>
+
+</html>

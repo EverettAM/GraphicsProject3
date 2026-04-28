@@ -1,0 +1,780 @@
+
+// --- Uniform location handles (filled in during init) ---
+var uAngleZLoc, uAngleXLoc, uAngleYLoc;
+var uDeltaXLoc, uDeltaYLoc, uDeltaZLoc;
+var uScaleXLoc, uScaleYLoc, uScaleZLoc;
+var uLocalXLoc, uLocalYLoc, uLocalZLoc;
+var uColorLoc;
+
+// --- Slider state ---
+var sArmRightAngle = 0.0;
+var sArmLeftAngle  = 0.0;
+var sDeltaX = 0.0;
+var sDeltaY = 0.0;
+
+// --- Drag rotation state ---
+// sDragX/Y accumulate total rotation from mouse/touch dragging.
+// dragActive, lastX/Y track the in-progress drag.
+var sDragY = 0.0;   // y-axis rotation (left/right drag) in radians
+var sDragX = 0.0;   // x-axis rotation (up/down drag) in radians
+var dragActive = false;
+var lastMouseX = 0;
+var lastMouseY = 0;
+
+const CUBE_FIRST    = 0;
+const CUBE_COUNT    = 36;
+const PYRAMID_FIRST = 36;
+const PYRAMID_COUNT = 18;
+var cubeSize = 0.1;
+
+var miku = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAvVBMVEUAAAAAUHYmmaMRGzkbf5g4tKwIFBIeIiv+7+bwtrb31s0LSGcXIz/p5GIp2NEq2tAxKDVILD0yJzXpUHiAOVFnM0ggj7HjozbadkIbbrL////G4uoAP2dhn6tMLT9GLD3mJE3udnpZMEMqJjJAKjo0OTwWj5cmy8QdqqsfISQivrrYLHwWkZgPdYMQEy4QGDUPEi3i4ecAAACbHVcAHU0kL0oBAAbZ7NulqbXN0NkiJC+23dENCyOGw8KSzsezoHxXAAAAAXRSTlMAQObYZgAAA7dJREFUeNq1lol2mzoQQGcGcAR225ele/v2tQ1xsGMwBs3/f9abkVgMKcbuOb1nohGydBmQ4mNo4e2GebNla1mwFsZwDpAzMIMg7ZjtdkO02W6nBPxVBV95UrDZoLCRMtAFjMjzpp1C1ESsIJEKLuXQwBQLxFOfwxRMKBBz7GC4FK6YSBpMEmOSBC8XeERghGnB4RaG6P4feMBBz0N7LnT/DyMH5NyeC93/vDhwwWwdLN1DkW+FnFlywdAIyFpqBMCFjmuGPGcRVGRZJ7ClSgScCxVxoS3ATwBWP2SS5C6p0nHNgE9c4YEQMRYk0QErfkJ8IuTqCQkB4Gfg9oAx/AIASDquWQTSl8DVKo5XK0R3qQLNXvD67pqIgQiY6Pru9UBgtQJOcPXxUxx/+rjChLUCa58qrcBWCHB3e4OSgAAQb27vJFU6rhlkGjvBh8/GfP7QCHRCgbbAqiAo6PqGCBxEN9dUABUyTiwZrGUJxHb/EVmHBPbBIPHHn7+7/XcaHRLAh7IMgiCKohAakNAYaYI6qCUCaJAb+FljgucCQQQNvSCOjJ+FAk0K4tIRnxIQQC9YPhO8MuaVCCYfoa9AFy+XtcwTJC31QLUCf7CwLKUxjsRhzFEFJgyNWXYYLB3/fPFZBGWWlacEntghHSodX1KfiawKLI0EPZEndEhHBPt9Wf6banYCLku2NLzP0Tu48iwc0tnLQlmapntJKuEqyyrehwNAV08KdGGaanICrYD3w2nHFej1ouPK7pXyv7R0HWu5FNhevXg5EBA0OHEUdRVgEKxr/wj1OggQrfPg1bv3/Y1GAuVY8FivNdb1owroYb1+IBxVIAwFdS/Y1fVj/ShR1zsRPNQPErh4+2bRc1yBLOtrE5MKPCqoa9QO6g2GgqlzIGe6Fxz1h9O8YJ4AAgl4zpxgHhQIfiDzjyDQYGKbzmRUfwhhm3B8pybDkOlXQABlmWVwn2VlCUDUDF+yC73gO3ehhDK7v88kgVK5GB2kWe5TOIm1Fk7y15wApgTo09/p6V2wdkaQwoyACAgm2cFOounXOwkYf6EQnDIEIpBGWYhCVbL6IkEgccb/w9T6IFiGUb/biTHf2nucLkA4FsQiMNFMBZcLlMseYZrBC2t+J7S/GxLFNCQTghDCrrP0mPZ3w0gwT6yYjrgV/PbrmYJQiTrCgTCGefxR61iEA0Y3CM8QOLqrcyvQJf6vE7x8cYkgigYVqOH9O724/B18XwX1SKC8eastwKywu6VvRowqXJxxDua27X9vNLBJUznaFgAAAABJRU5ErkJggg==";
+var rin = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAP1BMVEUAAAD/3Iv/y3L/77/96tz94M7////+8//+23mNTkVDf5CK0O79ybSWW1X2s2R2S0a53Ov9/t/HvbHokknrim/BE3XyAAAAAXRSTlMAQObYZgAAAn9JREFUeNrdlotyozAMRXWNkZNNZff1/9+6khB1IZCEdHY6s6e2LHXCiQmMbZrBCjpKSmkYNDwtAAYFQB6V/PwM/pmAmSPsULgoXHYFpbB12oMnAe8JiNn7LkgJ3rMDehQYpSCIvBNfHlxXhISU/KKkuECHBG02TgLtCcOA5PWWgIE0KgngtcBhBhiqONGKIQ0pMQ9pdNLAnJL+U5uP8QhPAyUGDzhpsSHQcD6P4/msybWgcPGr7HMnLa5vQcOZ/+TxD5/neh5DcAI5uCG45HzZECRKzNwFWiRKRBp8xMxLVl6whkAaSryDoKnuoyNKVSiQ2nJuVWYosFc0Z1rwPwjaF9LTSRD5FMYF1JGJNoesCIRZ4PmXIOdxtGb9nqAKRFsNWWsuc1Swuo1xBXJGqVK1FcvNJSHoUMeU33sBSikVqKVYLgJF9gV9alNgXxirOYrn4riyVtigCXWs9B4JGxXMkarEexOxJ2WDJtSx0nskxa6BCeBpCY28XqRz4ykUX99NUDy1aINcXh8TjDs8PAN7EsvujDdmwM7b2yRA9b/3d4sf+Ii6ygLaAKAfAeVXBc/fQnN6RUcRp1ceSTy4kppCB8ViJpnT1qw4hmjrLjkuqNYckYiHgAkQBoMOUuGSBY9afBEgMGNKS2EfhOjIekDMVCwNDghohxuCFhwX9JcX6C/1Dliw/YndzTY21dtA+T3Bz2/hvQXv00aDFmB9LtijilOJ4n2YWZ8LdvEtE7Qt2NqVPz9pm3FFXkD3sW/sc87HBTkvrhrjQFDhge7TzwrwFgeCJh4eWB6+nxW8TcTeSmSxZxu/+lUdvF6eFdyfQQuenMF6PXhT2OmCzvW68Bc1SkMmJ3v5wwAAAABJRU5ErkJggg=="
+var len = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAArlBMVEUAAACMkaV3e5/7/bRhZJn+mpr/8LXro5fghX7/2q39/eP////h5vp0eqwAUHb7/bL//+7+/f/Y4//6+/8wOl3++7b9vY3x9NXG4upgo7T/u5L+/rb//9H9/7vo7Or//9j//+Ht8d6L277/8rH/xqv44KDp7P+ksLj/t6j+x6nyy4hxdKvTy/1xfLLurGiKnLB9iK3/w8//4N7/8+f37Kro5v769/6Km62Gw8ImmaO4fIlEAAAAAXRSTlMAQObYZgAAAzxJREFUeNq9lgtjmjAQxxO0SQDnVmefa7utXa2KD14G+/2/2O4uSaOgsmq7n5FckPtzl+AR5hAOaQ7svYhIRgJaaATC9wsIFQklAEXtGAFhBaQ8RiC2CJkBUuz7vT2FjDh+ElWeF0We994vYAF/oEWg933bMRae+pDyZ57GMBIiigUcQ0KAGWMucAbtyHvIMJQ7BEKJAkKG0MCGhgIK7cEgkqH1CPGEkNB5gVCQLi5/LJVSGQCdjJV5FuRgAD1DvjHx9pzAoCYgqanhMMuGQwW2a2Abgau7X1IKJiUTUv68u2IGE15IwrlS1zdZdnOtVA+GmIKCAzQG/L5/UAp6UFPq4R4FCFKPlAhBIM/jx6J4jOEJIMcoAgEZqcik0JPS+sgepeARUkB4Knfr3+vhGCfM9PX13wnnQbfT6ZwxS7pMl9BS/pV/+cI5ZxatV0WR/ZMAPs4gwOsCMxR4XTP2Sqz3CWQokB0SIN82gUMp+Ag40gm6RHDJU8ClgLj50MSK0BoEXAQXnN/ect4lOL8Ya50kL8uiWL4kidbj8dMf4Gm8Am8P8/DLH5CBiyDgGlmmo1G61MZOltB0LQKfQsdwRoChDaOR9oCHLokFUZYbk8iBWgQIXPu8JVARc6KqNiIoTAnLCLAxQBLwIRN0nbuscCu4NwUS8DRT8HDErwI3N55NJhCKp5nCep/AvgjSqkpTJ5BuCASIn8RAGyYTrZsRpHMirTYFyK3rCGbIipht2uV0WpbTBTEtDzwHHKH/gANsOFEQGVEU7FR8BMcCvqdhb/9hEXSOnYOmbydhWySJKSiJxoKkXWWq395VLeqJ83N2kPW6ZQpaBeDjaURAPLNNKsLZFMFJrF+B09YRP58pYIuOp8LU/QDp9/u+oDACjUNUW13f+AQBlmVXXayAe3l4uwlF8El0ISgsLm8xaA1F5ASB2f8UOD0FU5u5JeiuEG1xq6HbBPgbKGA1NpYTtOyh+W90b2kiaETQjn0/OM4WSGlZsDrtEcyRyjJnBjdmO3D7hK19gxtmH55C+yrUUjhaILXbA18hzdfBLX4SHUYgrYh0Xq8LjoBmHL8kQAp4AMtuCOz24IhJzJCC2LnV/ws3i85ynQRyOQAAAABJRU5ErkJggg=="
+var luka = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAh1BMVEUAAACCgoL/////9+j86ePy7OHH9v/v59vf5uvy38vy4L31zcbd18zryrLmzaii3vzTxbfmtqHxrKzOtqXUtoybt73ZnY/viqTHoXW4jGXja5N9kp7fXYmhgWyweFjZV4+MalZqb32MT3tVWWt4UD2AQGZ1MlNCRVdZOC4xM0VeHTUmJjMAAACcJ39UAAAAAnRSTlMARAciSLEAAAOVSURBVHja7ZZhc+MoDIZzta9XG0NilhZBm9St01IV///fdxIME3edmTjbmf2yqwFEGL9PEBijTTErrNbUeOu1pmZzrQlSkVZYonBzNcDaZ++fiWF1XWvrnzeHzeN0BSCosW1HFawWdS2I8OA29/Gf9QAzqpcXNRpvZdNI620Pn1v8WA/QOQStpawaKcmb99twvAbAi3gCiEa93Y3DeoAtJjmE3tZV+3rzsl8hFDYYra0tprUJNFjei8uAWhsU4gQQAo2uLY0LoesZgIHnYq81Qi00z51mzrsISINUakHNSc9AexYAjgE5dgY4+AoAlpf3gxHwFQDx1glt3z+r5vOdnnO3Ec4BNrUgtwQIN20PQr/dPVbN492bFoftREAtbC2sYICjykJB/ukpD8yXxrsDRfd6c1819zevFOnBeW1pXAhfgibh3M/N5wNc9p+EOg0tjvVTbs5axBhAgfv52+DAKGVO47tudxyO07QAYIzRtAZmOy4EIVjfqtN49283NMMZAOlxDvC2aprKejDdf123AhAixnkI3jdSNt472HXd7kIIHD8DiofdDryPUkbvuV/Wg1E7KtnNIDFgoBKLdz9+OOsB0VvL/XImwACAcVS5zACYhVg8/6vGAFurNffLGzkM+1KofplBRKSmeN44LcyotNDcL4A8A1jOAAyNTLwGU4wTQhhDCPXYqlboQD8KoJey76lkNwOwbEob3ipF6CQaX8aWRAwrgIe+f3igkt08BIxkSDp6GlMP0Y4cAnK/AD6Ox48PKtnNAMYoKuCcAyrKpBlFTJ857pdTaYZbfi5FrMwMwHoTJ9ZTbU3ENA2+Yjz3y6k0+60xrSEIuzkgj+QVpg7vKOnHdgwe+Uc+lWiGfQIoQ24xA4yszgAWBdV2KuvR833h0ewHUuYQvgByUBw/VwXsyxnIfeO9AXcchuORSnYE+Gt/7U8zkZtfN70RgprNtxDfM/4ebH6z8TXnQMHsUu2b/oqPSEBE/rzNrnVZySsApA/fAnAEvxwCx58A2cdFXnDJSBNCdH3v2AdMF87pVl4DmEKYQEpgH3CRF1yyiCSEvmkqIADGRV5wyaY4IZoDXyjO0Y+cEHDhugLAWYmJIV9rRFnkBZfXgJUjJsIYMClLZrIGkK95la9hBS4pOW2UVPs1ACZM0SRCCy4pK1azWwFIy31KBCAruV0JYD1ELKkIpBDKDNaEkHOCkgyVNejZnT0P/wPmW6LCQfNg4gAAAABJRU5ErkJggg==";
+var meiko = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAP1BMVEUAAACBaExMPSiggV5ZQy1tVTvcr5Hdyao9NSKxe1xgTjXi2L9/JCUzJhhRCg+9OjueKTGhb1Z5TEFsEx2BV0yqKmepAAAAAXRSTlMAQObYZgAAAnRJREFUeNrtltuyqyAMQMNFQDaVWPr/33oSQsXu3tRO99NZY6Mw6eLmIHBFNXQD9qKMUfT7SGAsCayu2GOCwShlK+qIYOAeGOe8d84c6sGHAplEKwK7XyDsF6gn2MZWgTG2YsxeAc+bMqYLWoWy5KAABgSqBLUU7gTWhpEI1nYBUQVG8gYFg5HnXQJQoDhvgAHIAFzB2BYkTemg4zhGulHxdg7EoAZgmnAF5xsS6B/lvfrRJODWu6CNeIDKIEXCagBtAShHlkDWXxaCom70liQ8JBEhhBM0pkZqQMP75Nz4DUEm1oJEz6cQUm58V5AXUoU73gRcWvAVqRrXEmS6QEY+VrYJnDDP8/l8plgKCzzBglLKVCkikMwHAk8NXi6XcZ5TxRGJEQlJnwq8IAKKqYIhYLphnfZGwNOBOSM/HBVkdA7zNkGuRK11qAsnAk9sFERN5EzhxGuv59kRnnDETIzEPCM2IS9JgY6OBDfP0I0tndMCYkDEB4IoyBAoyhCE+yHI63IzBC1IaxS74OUc/Oc3GW5J/dbpVQXWIF24GNIkdQHowpqdKqVlPxFg3045ijC32kLAPnJ2AC5nOAxm6cBxMl87iBEOE2/+rrXMQY8pSXxhWCv0q1HtYP1BShUWfJMY11PwOYngzWUpez8695eCTPy1IOfe/bzQzgt9R51+bRSlCxABcEqLAJnpiQDvBSgCSqiHhNWhoRaughneU7+w/ioYL8cE6092L1Ppa4IYPxSIImoNUL+wcVnGsLUH8iPB6STnBSLy174uoyxsKdOG/SEwWk4N9BCqABHDdgG33Q8N9b24DuG8YT+oh4TVoeHdHPwDBxI+E4zZ/CYAAAAASUVORK5CYII=";
+var kaito = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAWlBMVEUAAABagsZpnM9UbrpwrNQ0MEItKTc8OVHuzcTx2MvpwLtVV3FISGBAP1FbYH314tNMdLaLrtFyf7o8O2fvx23prltNhbtKcbJBRX5GU5JIYqKws8TM0Njt6tsaXwfRAAAAAXRSTlMAQObYZgAAA3FJREFUeNrtlu2SmzgQRdWtL2wc7yYDNqDu93/NvWqBl4zHGZczu79yDKIl0KkLGAq3sWzQNM/TvLgn2QvmBWC2LS8I5mmCYlp5NcHrAgQA8xckOBrTy9fguPKCoNF1B9B1z098yAyWxW0sjwVXpMfx7Q+0YL3uNA7M7sZ9d7lcL9clL+BqE+NyxRB62IPGrdRBLO4OHHtZ5poXgiM26GAI02eMQ+RAxoqRv93VOhZ8O7HlOiMA4r+9XZe3N5xGtiE0l8vcEozOoY/GYbx2AVyXCxoTxJznWX50hx8yzznHTVC31RAH7HcG9g9xTXAxJ67akmKcJv1++Ou7TlOMCUNgutrWgeh2oGMCxDHBPOF37Lb7n5IN3O6K23Hn2vAkmoBboSKiUsiTAvJuRQPn7ujuKf58eic4HCAQ6gGJWxmZ8qF7StABCHwP/E0wMD2d4HiUe4EGvk/gi5QqAKpCnsAmWGsV1DqOCoERdC9QFaG+CdSvaM63mjgQRsZBVcnQnwRSxf03YFfcqEH8VhMxeipaExqyFwxFCQGqQERoUAKMH2UCqqgLsWrRHTvBKOL92a5BKaqjVkIGQY3AQRh1sQjGTwIq3PfnviVQJa1wzDmylRICCxyWQFb2Ai3hBKqgFNEGxZgSqRFCW0VBMXQvEE4pxdQEda4ATjCwVEpgVQ4kRjFEdgJPGcQEvBcRKoASaBVXAXH9MW8C3guizW8weUyDJffnTCIQEBdsVwF5g/aCmCJYDSi8An8CVkEg9g81wXbYXpDe4QX4HrRqe6Rz5dAZh+z+8NWIuHdoaxpkixsH55gdQPsZ3hP56Azy6JP7FUTuDqZb1ZovQd0dH9t123wlKqowvq7WcXgsyO5/IBCHcOu4HSkC9ynR2Gr3H6NCPgG3wkGPXXbPczr7shcQj93h9wTD7yXgoM8n0BOAoEjxnkQZQLB+HjzxTjBBTyL2saBKFVUdIFByBkM0jLa9R7+BnoOqIMEqEEUXCz3xTpAqQARSOwXRjaLAfU6xa3D2XmQYME2ABSi1+dXjyLsE/bnvudTrJo2WQOSZBHYKIBQilWIoMIlbaf3HghRTSmxTDFm5Cdpd+fCV4BOIGZAXEd8EzEzMEHxOAs0QvSdOvkJNQN6thMAUwrunPf0riBVrV18T4JBGXHmUYM/6QVD58Ev9Hynvbc+3R6d+AAAAAElFTkSuQmCC";
+
+
+var lenVid = "../downloads/superhero.mp4;"
+
+
+// ---------------------------------------------------------------------------
+// faceUV: converts a pixel rectangle in a texture atlas into the 12 UV values
+// (6 vertices = 2 triangles) needed for one quad face of the cube.
+//
+// Parameters:
+//   x, y       — top-left corner of the region in pixels
+//   w, h       — width and height of the region in pixels
+//   imgW, imgH — full texture image dimensions in pixels
+//
+// The winding order here matches the vertex winding in the points buffer:
+//   Triangle 1: top-right, top-left, bottom-left   (vertices 0,1,2)
+//   Triangle 2: bottom-left, bottom-right, top-right (vertices 3,4,5)
+//
+// WebGL UV origin (0,0) is bottom-left, so v0 (top of image) = y/imgH
+// and v1 (bottom of image region) = (y+h)/imgH.
+// ---------------------------------------------------------------------------
+function faceUV(x, y, w, h, imgW, imgH, { flipU = false, flipV = false } = {}) {
+    let u0 = x           / imgW;
+    let u1 = (x + w)     / imgW;
+    let v0 = y           / imgH;   // top of region in image space
+    let v1 = (y + h)     / imgH;   // bottom of region in image space
+
+
+    // Swap the relevant pair of coordinates to flip that axis
+    if (flipU) { [u0, u1] = [u1, u0]; }
+    if (flipV) { [v0, v1] = [v1, v0]; }
+
+
+    // Two triangles, 6 UV pairs, matching vertex winding in the points buffer:
+    //   Front face verts: (+x+y+z), (-x+y+z), (-x-y+z), (-x-y+z), (+x-y+z), (+x+y+z)
+    //   Mapping:           top-left  top-rogjt  bot-right   bot-right  bot-left  top-left
+
+    
+    return [
+        u0, v0,   // top-left
+        u1, v0,   // top-right
+        u1, v1,   // bottom-right
+        u1, v1,   // bottom-right  (start of tri 2)
+        u0, v1,   // bottom-left
+        u0, v0,   // top-left
+    ];
+}
+
+
+
+// ---------------------------------------------------------------------------
+// buildCubeUVs: assembles all 36 UV pairs (6 faces × 6 vertices) for one cube.
+//
+// 'faces' is an array of 6 objects, one per face, in the order the faces
+// appear in the vertex buffer: [front, back, left, right, top, bottom].
+// Each object has { x, y, w, h } pixel coordinates in the texture atlas.
+//
+// imgW / imgH are the atlas image dimensions.
+// ---------------------------------------------------------------------------
+function buildCubeUVs(faces, imgW, imgH) {
+    const uvs = [];
+    for (const f of faces) {
+        uvs.push(...faceUV(f.x, f.y, f.w, f.h, imgW, imgH,
+                           { flipU: f.flipU, flipV: f.flipV }));
+    }
+    return uvs;
+}
+// ---------------------------------------------------------------------------
+// TEXTURE ATLAS LAYOUT  (edit these values to match your actual image)
+//
+// This example assumes a 64×64 Minecraft-style skin laid out like:
+//
+//   Head faces  (top row of atlas):
+//     top    :  8, 0, 8, 8
+//     bottom : 16, 0, 8, 8
+//     right  :  0, 8, 8, 8
+//     front  :  8, 8, 8, 8
+//     left   : 16, 8, 8, 8
+//     back   : 24, 8, 8, 8
+//
+//   Body faces  (second row):
+//     top    : 20, 16,  8,  4
+//     bottom : 28, 16,  8,  4
+//     right  : 16, 20,  4, 12
+//     front  : 20, 20,  8, 12
+//     left   : 28, 20,  4, 12
+//     back   : 32, 20,  8, 12
+//
+//   Arm faces   (third row, right arm — mirror UVs for left arm if needed):
+//     top    : 44,  0,  4,  4
+//     bottom : 48,  0,  4,  4
+//     right  : 40,  4,  4, 12
+//     front  : 44,  4,  4, 12
+//     left   : 48,  4,  4, 12
+//     back   : 52,  4,  4, 12
+//
+//   Leg faces   (fourth row, right leg):
+//     top    :  4,  0,  4,  4
+//     bottom :  8,  0,  4,  4
+//     right  :  0,  4,  4, 12
+//     front  :  4,  4,  4, 12
+//     left   :  8,  4,  4, 12
+//     back   : 12,  4,  4, 12
+//
+// The face order in each array below must match the vertex buffer order:
+//   [front, back, left, right, top, bottom]
+// ---------------------------------------------------------------------------
+const IMG_W = 64, IMG_H = 64;
+
+// Each entry in the scene now carries a 'uvs' Float32Array (36 UV pairs for
+// a cube, 18 for a pyramid) that will be uploaded to the GPU before its draw.
+const scene = [
+    {   // HEAD
+        shape: 'cube',
+        tx: 0.0,  ty: cubeSize * 2.5,   tz: 0.0,
+        lx: 0.0,  ly: 0.0,   lz: 0.0,
+        rx: 0.0,  sx: 1,     sy: 1,    sz: 1,
+        r: 1, g: 0, b: 0,
+        // Face UV regions [front, back, left, right, top, bottom]
+        uvs: new Float32Array(buildCubeUVs([
+            { x:  24, y:  8, w: 8, h: 8 },  // back
+            { x: 8, y:  8, w: 8, h: 8, flipU: true },  // front
+            { x:  0, y:  8, w: 8, h: 8 },  // left
+            { x: 16, y:  8, w: 8, h: 8 },  // right
+            { x:  8, y:  0, w: 8, h: 8, flipV: true },  // top
+            { x: 16, y:  0, w: 8, h: 8 },  // bottom
+        ], IMG_W, IMG_H))
+    },
+    {   // BODY
+        shape: 'cube',
+        tx: 0.0,  ty: 0.0,   tz: 0.0,
+        lx: 0.0,  ly: 0.0,   lz: 0.0,
+        rx: 0.0,  sx: 1,     sy: 1.5,  sz: 0.625,
+        r: 0, g: 1, b: 0,
+        uvs: new Float32Array(buildCubeUVs([
+            { x: 32, y: 20, w:  8, h: 12}, // back
+            { x: 20, y: 20, w:  8, h: 12, flipU: true  }, // front
+            { x: 16, y: 20, w:  4, h: 12 }, // left
+            { x: 28, y: 20, w:  4, h: 12 }, // right
+            { x: 20, y: 16, w:  8, h:  4 }, // top
+            { x: 28, y: 16, w:  8, h:  4 }, // bottom
+        ], IMG_W, IMG_H))
+    },
+    {   // RIGHT ARM
+        shape: 'cube',
+        tx: cubeSize * 1.375,  ty: 0.0,  tz: 0.0,
+        lx: 0.0,    ly: 0.0,  lz: 0.0,
+        rx: 0.0,    sx: 0.375, sy: 1.5, sz: 0.625,
+        r: 0, g: 0, b: 1,
+        uvs: new Float32Array(buildCubeUVs([
+            { x: 43, y:  52, w: 3, h: 12}, // front
+            { x: 36, y:  52, w: 3, h: 12, flipU:true}, // back
+            { x: 32, y:  52, w: 4, h: 12 }, // left  
+            { x: 39, y:  52, w: 4, h: 12 }, // right 
+            { x: 36, y:  48, w: 3, h:  4 }, // top
+            { x: 39, y:  48, w: 3, h:  4 }, // bottom
+        ], IMG_W, IMG_H))
+    },
+    {   // LEFT ARM
+        shape: 'cube',
+        tx: -cubeSize * 1.375, ty: 0.0,  tz: 0.0,
+        lx: 0.0,    ly: 0.0,  lz: 0.0,
+        rx: 0.0,    sx: 0.375, sy: 1.5, sz: 0.625,
+        r: 0, g: 0, b: 1,
+        // Left arm uses the same regions as right arm in a basic skin;
+        // swap left/right faces to mirror if your atlas has separate left-arm tiles
+        uvs: new Float32Array(buildCubeUVs([
+            { x: 51, y:  20, w: 3, h: 12 }, // front
+            { x: 44, y:  20, w: 3, h: 12, flipU: true }, // back
+            { x: 40, y:  20, w: 4, h: 12 }, // left
+            { x: 47, y:  20, w: 4, h: 12 }, // right
+            { x: 44, y:  16, w: 3, h:  4 }, // top
+            { x: 47, y:  16, w: 3, h:  4 }, // bottom
+        ], IMG_W, IMG_H))
+    },
+    {   // RIGHT LEG
+        shape: 'cube',
+        tx: cubeSize*0.5,  ty: -cubeSize*3,  tz: 0.0,
+        lx: 0.0,  ly:  0.0,  lz: 0.0,
+        rx: 0.0,  sx: 0.5,   sy: 1.5,  sz: 0.625,
+        r: 1, g: 1, b: 0,
+        uvs: new Float32Array(buildCubeUVs([
+            { x:  28, y:  52, w: 4, h: 12 }, // back
+            { x: 20, y:  52, w: 4, h: 12,flipU: true }, // front
+            { x:  16, y:  52, w: 4, h: 12 }, // left
+            { x:  24, y:  52, w: 4, h: 12 }, // right
+            { x:  20, y:  48, w: 4, h:  4 }, // top
+            { x:  24, y:  48, w: 4, h:  4 }, // bottom
+        ], IMG_W, IMG_H))
+    },
+    {   // LEFT LEG
+        shape: 'cube',
+        tx: -cubeSize*0.5, ty: -cubeSize*3,  tz: 0.0,
+        lx:  0.0, ly:  0.0,  lz: 0.0,
+        rx:  0.0, sx:  0.5,  sy: 1.5,  sz: 0.625,
+        r: 1, g: 0, b: 1,
+        // Mirror left/right faces for left leg
+        uvs: new Float32Array(buildCubeUVs([
+            { x:  12, y:  20, w: 4, h: 12 }, // back
+            { x: 4, y:  20, w: 4, h: 12, flipU: true }, // front
+            { x:  0, y:  20, w: 4, h: 12 }, // left  (swapped)
+            { x:  8, y:  20, w: 4, h: 12 }, // right (swapped)
+            { x:  4, y:  16, w: 4, h:  4 }, // top
+            { x:  8, y:  16, w: 4, h:  4 }, // bottom
+        ], IMG_W, IMG_H))
+    },
+    {   // HEAD OVERLAY
+    shape: 'cube',
+    tx: 0.0,  ty: cubeSize * 2.5,  tz: 0.0,
+    lx: 0.0,  ly: 0.0,  lz: 0.0,
+    rx: 0.0,
+    // Scale 5% larger on each axis so it wraps just outside the head
+    sx: 1.1,  sy: 1.1,  sz: 1.1,
+    r: 1, g: 0, b: 0,
+    overlay: true,   // <-- drawn in pass 2
+    uvs: new Float32Array(buildCubeUVs([
+        { x: 56, y:  8, w: 8, h: 8  },              // back
+        { x: 40, y:  8, w: 8, h: 8,flipU: true },   // front
+        { x: 32, y:  8, w: 8, h: 8 },               // left
+        { x: 48, y:  8, w: 8, h: 8 },               // right
+        { x: 40, y:  0, w: 8, h: 8, flipV: true },  // top
+        { x: 48, y:  0, w: 8, h: 8},                // bottom
+    ], IMG_W, IMG_H))
+},
+{   // BODY OVERLAY
+        shape: 'cube',
+        tx: 0.0,  ty: 0.0,   tz: 0.0,
+        lx: 0.0,  ly: 0.0,   lz: 0.0,
+        rx: 0.0,  sx: 1.1,  sy: 1.65,  sz: 0.688,
+        r: 0, g: 1, b: 0,
+        overlay: true, 
+        uvs: new Float32Array(buildCubeUVs([
+            { x: 32, y: 36, w:  8, h: 12}, // back
+            { x: 20, y: 36, w:  8, h: 12, flipU: true  }, // front
+            { x: 16, y: 36, w:  4, h: 12 }, // left
+            { x: 28, y: 36, w:  4, h: 12 }, // right
+            { x: 20, y: 32, w:  8, h:  4 }, // top
+            { x: 28, y: 32, w:  8, h:  4 }, // bottom
+        ], IMG_W, IMG_H))
+    },
+{   // RIGHT ARM OVERLAY
+        shape: 'cube',
+        tx: cubeSize * 1.375,  ty: 0.0,  tz: 0.0,
+        lx: 0.0,    ly: 0.0,  lz: 0.0,
+        rx: 0.0,    sx: 0.412, sy: 1.65, sz: 0.688,
+        r: 0, g: 0, b: 1,
+        overlay: true,
+        uvs: new Float32Array(buildCubeUVs([
+            { x: 59, y:  52, w: 3, h: 12, }, // back
+            { x: 52, y:  52, w: 3, h: 12, flipU: true}, // front
+            { x: 46, y:  52, w: 4, h: 12 }, // left  
+            { x: 55, y:  52, w: 4, h: 12 }, // right 
+            { x: 50, y:  48, w: 3, h:  4 }, // top
+            { x: 54, y:  48, w: 3, h:  4 }, // bottom
+        ], IMG_W, IMG_H))
+    },
+    {   // LEFT ARM OVERLAY
+        shape: 'cube',
+        tx: -cubeSize * 1.375, ty: 0.0,  tz: 0.0,
+        lx: 0.0,    ly: 0.0,  lz: 0.0,
+        rx: 0.0,    sx: 0.412, sy: 1.65, sz: 0.688,
+        r: 0, g: 0, b: 1,
+        overlay: true,
+        // Left arm uses the same regions as right arm in a basic skin;
+        // swap left/right faces to mirror if your atlas has separate left-arm tiles
+        uvs: new Float32Array(buildCubeUVs([
+            { x: 51, y:  36, w: 3, h: 12,  }, // back
+            { x: 44, y:  36, w: 3, h: 12, flipU: true }, // front
+            { x: 40, y:  36, w: 4, h: 12 }, // left
+            { x: 47, y:  36, w: 4, h: 12 }, // right
+            { x: 44, y:  32, w: 3, h:  4 }, // top
+            { x: 47, y:  32, w: 3, h:  4 }, // bottom
+        ], IMG_W, IMG_H))
+    },
+    {   // RIGHT LEG OVERLAY
+        shape: 'cube',
+        tx: cubeSize*0.5,  ty: -cubeSize*3,  tz: 0.0,
+        lx: 0.0,  ly:  0.0,  lz: 0.0,
+        rx: 0.0,  sx: 0.55,   sy: 1.65,  sz: 0.688,
+        r: 1, g: 1, b: 0,
+        overlay: true,
+        uvs: new Float32Array(buildCubeUVs([
+            { x:  12, y:  52, w: 4, h: 12 }, // back
+            { x: 4, y:  52, w: 4, h: 12,flipU: true }, // front
+            { x:  0, y:  52, w: 4, h: 12 }, // left
+            { x:  8, y:  52, w: 4, h: 12 }, // right
+            { x:  4, y:  48, w: 4, h:  4 }, // top
+            { x:  8, y:  48, w: 4, h:  4 }, // bottom
+        ], IMG_W, IMG_H))
+    },
+     {   // LEFT LEG OVERLAY
+        shape: 'cube',
+        tx: -cubeSize*0.5, ty: -cubeSize*3,  tz: 0.0,
+        lx:  0.0, ly:  0.0,  lz: 0.0,
+        rx: 0.0,  sx: 0.55,   sy: 1.65,  sz: 0.688,
+        r: 1, g: 0, b: 1,
+        overlay: true,
+        // Mirror left/right faces for left leg
+        uvs: new Float32Array(buildCubeUVs([
+            { x:  12, y:  36, w: 4, h: 12 }, // back
+            { x: 4, y:  36, w: 4, h: 12, flipU: true }, // front
+            { x:  0, y:  36, w: 4, h: 12 }, // left  (swapped)
+            { x:  8, y:  36, w: 4, h: 12 }, // right (swapped)
+            { x:  4, y:  32, w: 4, h:  4 }, // top
+            { x:  8, y:  32, w: 4, h:  4 }, // bottom
+        ], IMG_W, IMG_H))
+    },
+
+];
+
+const stage = [
+    {   // Stage Base
+        shape: 'cube',
+        tx: 0.0,  ty: -0.75,   tz: 0.5,
+        lx: 0.0,  ly: 0.0,   lz: 0.0,
+        rx: 0.0,  sx: 10,     sy: 1.25,    sz: 3,
+        r: 69/255, g: 71/255, b: 74/255,
+    },
+    { //Stage Screen (Ring)
+         shape: 'cube',
+        tx: 0.0,  ty: 0,   tz: 0.75,
+        lx: 0.0,  ly: 0.0,   lz: 0.0,
+        rx: 0.0,  sx: 8,     sy: 6,    sz: 0.5,
+        r: 69/255, g: 71/255, b: 74/255,
+    },
+    { //Stage Screen (LED)
+        shape: 'cube',
+        tx: 0.0,  ty: 0.0,   tz: 0.73,
+        lx: 0.0,  ly: 0.0,   lz: 0.0,
+        rx: 0.0,  sx: 7,     sy: 5,    sz: 0.5,
+        r: 1, g: 0, b: 0,
+        useVideo: true,   // <-- signals drawObject to swap textures
+        // Give it UVs covering the whole texture so the full video frame maps on
+        uvs: new Float32Array(buildCubeUVs([
+            { x: 0, y: 0, w: 64, h: 64 },  // front  — full frame
+            { x: 0, y: 0, w: 64, h: 64 },  // back
+            { x: 0, y: 0, w: 64, h: 64 },  // left
+            { x: 0, y: 0, w: 64, h: 64 },  // right
+            { x: 0, y: 0, w: 64, h: 64 },  // top
+            { x: 0, y: 0, w: 64, h: 64 },  // bottom
+        ], 64, 64)),
+    },
+
+];
+
+// ---------------------------------------------------------------------------
+// initShaders: unchanged — compiles and links the GLSL program.
+// ---------------------------------------------------------------------------
+function initShaders(gl, vertexShaderId, fragmentShaderId) {
+    var vertShdr;
+    var fragShdr;
+
+    var vertElem = document.getElementById(vertexShaderId);
+    if (!vertElem) {
+        alert("Unable to load vertex shader " + vertexShaderId);
+        return -1;
+    } else {
+        vertShdr = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertShdr, vertElem.textContent.replace(/^\s+|\s+$/g, ''));
+        gl.compileShader(vertShdr);
+        if (!gl.getShaderParameter(vertShdr, gl.COMPILE_STATUS)) {
+            alert("Vertex shader failed to compile. The error log is:"
+                + "<pre>" + gl.getShaderInfoLog(vertShdr) + "</pre>");
+            return -1;
+        }
+    }
+
+    var fragElem = document.getElementById(fragmentShaderId);
+    if (!fragElem) {
+        alert("Unable to load fragment shader " + fragmentShaderId);
+        return -1;
+    } else {
+        fragShdr = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragShdr, fragElem.textContent.replace(/^\s+|\s+$/g, ''));
+        gl.compileShader(fragShdr);
+        if (!gl.getShaderParameter(fragShdr, gl.COMPILE_STATUS)) {
+            alert("Fragment shader failed to compile. The error log is:"
+                + "<pre>" + gl.getShaderInfoLog(fragShdr) + "</pre>");
+            return -1;
+        }
+    }
+
+    var program = gl.createProgram();
+    gl.attachShader(program, vertShdr);
+    gl.attachShader(program, fragShdr);
+    gl.linkProgram(program);
+
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        alert("Shader program failed to link. The error log is:"
+            + "<pre>" + gl.getProgramInfoLog(program) + "</pre>");
+        return -1;
+    }
+
+    return program;
+}
+
+// ---------------------------------------------------------------------------
+// loadTexture: creates a WebGL texture from a URL.
+//
+// Immediately fills it with a 1×1 red placeholder so the render loop can
+// start drawing before the image file has finished loading from disk.
+// Once the Image object fires onload, the real pixel data replaces the
+// placeholder and a mipmap chain is generated for minification filtering.
+// ---------------------------------------------------------------------------
+function loadTexture(gl, url) {
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+
+    // Placeholder: 1×1 red pixel keeps the GPU happy while the file loads.
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0,
+                  gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 0, 0, 255]));
+
+    const img = new Image();
+    img.onload = () => {
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        // Upload the actual image; no explicit width/height — WebGL infers them.
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        // Build mipmaps so the texture looks correct when scaled down.
+        //gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    };
+    img.src = url;
+    return tex;
+}
+
+// ---------------------------------------------------------------------------
+// Global handles needed by render() — declared here so both init() and
+// render() can access them without passing parameters.
+// ---------------------------------------------------------------------------
+var gl;
+var canvas;
+var program;
+var texcoordBuffer;          // the one UV buffer we re-upload each draw call
+var texcoordAttributeLocation;
+var uUseTextureLoc;
+
+window.onload = function init() {
+    canvas  = document.getElementById("gl-canvas");
+    gl      = canvas.getContext('webgl2');
+    if (!gl) { alert("WebGL 2.0 isn't available"); }
+
+    document.getElementById("DeltaX").oninput  = e => sDeltaX = e.target.value;
+    document.getElementById("DeltaY").oninput  = e => sDeltaY = e.target.value;
+    document.getElementById("ArmRight").oninput = e => sArmRightAngle = Math.PI / 180 * e.target.value;
+    document.getElementById("ArmLeft").oninput  = e => sArmLeftAngle  = Math.PI / 180 * e.target.value;
+
+    // --- Reset button: snap drag rotation back to front-facing ---
+    document.getElementById("Reset").onclick = () => {
+        sDragY = 0.0;
+        sDragX = 0.0;
+    };
+
+    // --- Mouse drag on canvas ---
+    // Each pixel of drag moves the figure ~0.5 degrees.
+    // DRAG_SCALE controls sensitivity; lower = slower rotation.
+    const DRAG_SCALE = 0.005;
+
+    canvas.addEventListener("mousedown", e => {
+        dragActive = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        // Prevent text selection while dragging
+        e.preventDefault();
+    });
+    window.addEventListener("mouseup",   () => { dragActive = false; });
+    window.addEventListener("mousemove", e => {
+        if (!dragActive) return;
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        // Horizontal drag → Y-axis rotation (turntable)
+        sDragY += dx * DRAG_SCALE;
+        // Vertical drag   → X-axis tilt, clamped so it can't flip upside-down
+        sDragX += dy * DRAG_SCALE;
+        sDragX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, sDragX));
+    });
+
+    // --- Touch drag on canvas (mobile / tablet) ---
+    canvas.addEventListener("touchstart", e => {
+        dragActive = true;
+        lastMouseX = e.touches[0].clientX;
+        lastMouseY = e.touches[0].clientY;
+        e.preventDefault();
+    }, { passive: false });
+    window.addEventListener("touchend",  () => { dragActive = false; });
+    window.addEventListener("touchmove", e => {
+        if (!dragActive) return;
+        const dx = e.touches[0].clientX - lastMouseX;
+        const dy = e.touches[0].clientY - lastMouseY;
+        lastMouseX = e.touches[0].clientX;
+        lastMouseY = e.touches[0].clientY;
+        sDragY += dx * DRAG_SCALE;
+        sDragX += dy * DRAG_SCALE;
+        sDragX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, sDragX));
+    }, { passive: false });
+
+    program = initShaders(gl, "vertex-shader", "fragment-shader");
+    gl.useProgram(program);
+
+    // --- Vertex position buffer (unchanged geometry) ---
+    var points = new Float32Array([
+        // --- CUBE (36 vertices) ---
+        // Front face
+         cubeSize,  cubeSize,  cubeSize, 1,
+        -cubeSize,  cubeSize,  cubeSize, 1,
+        -cubeSize, -cubeSize,  cubeSize, 1,
+        -cubeSize, -cubeSize,  cubeSize, 1,
+         cubeSize, -cubeSize,  cubeSize, 1,
+         cubeSize,  cubeSize,  cubeSize, 1,
+        // Back face
+         cubeSize,  cubeSize, -cubeSize, 1,
+        -cubeSize,  cubeSize, -cubeSize, 1,
+        -cubeSize, -cubeSize, -cubeSize, 1,
+        -cubeSize, -cubeSize, -cubeSize, 1,
+         cubeSize, -cubeSize, -cubeSize, 1,
+         cubeSize,  cubeSize, -cubeSize, 1,
+        // Left face  (-x side, so "right" in UV space = +z, "left" = -z)
+        -cubeSize,  cubeSize,  cubeSize, 1,   // top-front    → top-right of face
+        -cubeSize,  cubeSize, -cubeSize, 1,   // top-back     → top-left
+        -cubeSize, -cubeSize, -cubeSize, 1,   // bottom-back  → bottom-left
+        -cubeSize, -cubeSize, -cubeSize, 1,   // bottom-back  → bottom-left  (tri 2)
+        -cubeSize, -cubeSize,  cubeSize, 1,   // bottom-front → bottom-right
+        -cubeSize,  cubeSize,  cubeSize, 1,   // top-front    → top-right
+
+        // Right face (+x side)
+        cubeSize,  cubeSize, -cubeSize, 1,   // top-back     → top-right of face
+        cubeSize,  cubeSize,  cubeSize, 1,   // top-front    → top-left
+        cubeSize, -cubeSize,  cubeSize, 1,   // bottom-front → bottom-left
+        cubeSize, -cubeSize,  cubeSize, 1,   // bottom-front → bottom-left  (tri 2)
+        cubeSize, -cubeSize, -cubeSize, 1,   // bottom-back  → bottom-right
+        cubeSize,  cubeSize, -cubeSize, 1,   // top-back     → top-right
+
+        // Top face (+y side, "right" in UV space = +x, "down" = -z)
+        -cubeSize,  cubeSize, -cubeSize, 1,   // back-left    → top-left
+        cubeSize,  cubeSize, -cubeSize, 1,   // back-right   → top-right
+        cubeSize,  cubeSize,  cubeSize, 1,   // front-right  → bottom-right
+        cubeSize,  cubeSize,  cubeSize, 1,   // front-right  → bottom-right (tri 2)
+        -cubeSize,  cubeSize,  cubeSize, 1,   // front-left   → bottom-left
+        -cubeSize,  cubeSize, -cubeSize, 1,   // back-left    → top-left
+
+        // Bottom face (-y side)
+        -cubeSize, -cubeSize,  cubeSize, 1,   // front-left   → top-left
+        cubeSize, -cubeSize,  cubeSize, 1,   // front-right  → top-right
+        cubeSize, -cubeSize, -cubeSize, 1,   // back-right   → bottom-right
+        cubeSize, -cubeSize, -cubeSize, 1,   // back-right   → bottom-right (tri 2)
+        -cubeSize, -cubeSize, -cubeSize, 1,   // back-left    → bottom-left
+        -cubeSize, -cubeSize,  cubeSize, 1,   // front-left   → top-left
+
+        // --- PYRAMID (18 vertices) ---
+        // Front triangle
+         0.0,  cubeSize,  0.0,      1,
+        -cubeSize, -cubeSize,  cubeSize, 1,
+         cubeSize, -cubeSize,  cubeSize, 1,
+        // Left triangle
+         0.0,  cubeSize,  0.0,      1,
+        -cubeSize, -cubeSize,  cubeSize, 1,
+        -cubeSize, -cubeSize, -cubeSize, 1,
+        // Right triangle
+         0.0,  cubeSize,  0.0,      1,
+         cubeSize, -cubeSize,  cubeSize, 1,
+         cubeSize, -cubeSize, -cubeSize, 1,
+        // Back triangle
+         0.0,  cubeSize,  0.0,      1,
+        -cubeSize, -cubeSize, -cubeSize, 1,
+         cubeSize, -cubeSize, -cubeSize, 1,
+        // Base triangle 1
+         cubeSize, -cubeSize,  cubeSize, 1,
+        -cubeSize, -cubeSize,  cubeSize, 1,
+        -cubeSize, -cubeSize, -cubeSize, 1,
+        // Base triangle 2
+         cubeSize, -cubeSize, -cubeSize, 1,
+        -cubeSize, -cubeSize, -cubeSize, 1,
+         cubeSize, -cubeSize,  cubeSize, 1,
+    ]);
+
+    var pointsBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, points, gl.STATIC_DRAW);
+
+    var aPosition = gl.getAttribLocation(program, "aPosition");
+    gl.vertexAttribPointer(aPosition, 4, gl.FLOAT, false,
+                           4 * Float32Array.BYTES_PER_ELEMENT, 0);
+    gl.enableVertexAttribArray(aPosition);
+
+    // --- UV / texcoord buffer ---
+    // We create the buffer once here but intentionally leave it empty.
+    // render() will call gl.bufferData on it before each drawArrays call
+    // to supply the per-object UV layout.
+    texcoordBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+
+    // Get the attribute location so render() can re-enable it after switching
+    // ARRAY_BUFFER targets.
+    texcoordAttributeLocation = gl.getAttribLocation(program, "aTexCoord0");
+    gl.enableVertexAttribArray(texcoordAttributeLocation);
+
+    // Describe the buffer layout: 2 floats per vertex, tightly packed.
+    // normalize=false because our data is already in [0,1] float range —
+    // normalize=true is only meaningful for integer types like UNSIGNED_BYTE.
+    gl.vertexAttribPointer(texcoordAttributeLocation,
+        2,          // 2 components (s, t) — NOT 3
+        gl.FLOAT,
+        false,      // normalize=false: UVs are already floats in [0,1]
+        0,          // stride=0: tightly packed
+        0);         // offset=0: start at byte 0
+
+    // --- Uniform locations ---
+    uUseTextureLoc = gl.getUniformLocation(program, "uUseTexture");
+    uAngleZLoc = gl.getUniformLocation(program, "uAngleZ");
+    uAngleXLoc = gl.getUniformLocation(program, "uAngleX");
+    uAngleYLoc = gl.getUniformLocation(program, "uAngleY");   // drag rotation
+    uDeltaXLoc = gl.getUniformLocation(program, "uDeltaX");
+    uDeltaYLoc = gl.getUniformLocation(program, "uDeltaY");
+    uDeltaZLoc = gl.getUniformLocation(program, "uDeltaZ");
+    uScaleXLoc = gl.getUniformLocation(program, "uScaleX");
+    uScaleYLoc = gl.getUniformLocation(program, "uScaleY");
+    uScaleZLoc = gl.getUniformLocation(program, "uScaleZ");
+    uLocalXLoc = gl.getUniformLocation(program, "uLocalX");
+    uLocalYLoc = gl.getUniformLocation(program, "uLocalY");
+    uLocalZLoc = gl.getUniformLocation(program, "uLocalZ");
+    uColorLoc  = gl.getUniformLocation(program, "uColor");
+
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.clearColor(0.5, 0.5, 0.5, 1.0);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // --- Texture setup (done ONCE here, not per frame) ---
+    const texture    = loadTexture(gl, kaito);
+    window.texture = texture;  
+    const uTextureLoc = gl.getUniformLocation(program, "u_texture");
+    // Activate texture unit 0 and bind our texture to it.
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    // Tell the sampler uniform which texture unit to read from (unit 0).
+    gl.uniform1i(uTextureLoc, 0);
+
+    // --- Video texture setup ---
+    const videoEl = document.getElementById("led-video");
+    const videoTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, videoTex);
+
+    // Fill with a black placeholder until the video is ready
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0,
+                gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+
+    // No mipmaps for video — dimensions change and NEAREST keeps it sharp
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    // CLAMP prevents edge-bleeding when UVs hit exactly 0 or 1
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    // Make videoTex and videoEl accessible to render()
+    window.videoTex = videoTex;
+    window.videoEl  = videoEl;
+
+    
+
+    render();
+};
+
+// ---------------------------------------------------------------------------
+// drawObject: uploads this object's UVs and issues the draw call.
+// Called by both passes in render().
+// ---------------------------------------------------------------------------
+function drawObject(obj) {
+    // --- Handle objects with no UV data (flat-color stage pieces) ---
+    if (obj.uvs) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, obj.uvs, gl.DYNAMIC_DRAW);
+        gl.vertexAttribPointer(texcoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+    }
+
+     if (obj.useVideo) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, window.videoTex);
+    }
+
+    let angleX = 0.0;
+    if (obj.armAngle === 'right') angleX = sArmRightAngle;
+    if (obj.armAngle === 'left')  angleX = sArmLeftAngle;
+
+    // Guard against missing rx — default to 0 if not set
+    gl.uniform1f(uAngleZLoc, obj.rx ?? 0.0);
+    gl.uniform1f(uAngleXLoc, angleX + sDragX);
+    gl.uniform1f(uAngleYLoc, sDragY);
+    gl.uniform1f(uDeltaXLoc, obj.tx + parseFloat(sDeltaX));
+    gl.uniform1f(uDeltaYLoc, obj.ty + parseFloat(sDeltaY));
+    gl.uniform1f(uDeltaZLoc, obj.tz);
+    gl.uniform1f(uScaleXLoc, obj.sx);
+    gl.uniform1f(uScaleYLoc, obj.sy);
+    gl.uniform1f(uScaleZLoc, obj.sz);
+    gl.uniform1f(uLocalXLoc, obj.lx ?? 0.0);
+    gl.uniform1f(uLocalYLoc, obj.ly ?? 0.0);
+    gl.uniform1f(uLocalZLoc, obj.lz ?? 0.0);
+    gl.uniform4f(uColorLoc,  obj.r, obj.g, obj.b, 1.0);
+    gl.uniform1f(uUseTextureLoc, obj.uvs ? 1.0 : 0.0);
+
+    if (obj.shape === 'cube') {
+        gl.drawArrays(gl.TRIANGLES, CUBE_FIRST, CUBE_COUNT);
+    } else {
+        gl.drawArrays(gl.TRIANGLES, PYRAMID_FIRST, PYRAMID_COUNT);
+    }
+    if (obj.useVideo) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, window.texture);
+    }
+}
+
+function render() {
+    // Upload the current video frame to the GPU if the video is playing.
+    // HAVE_ENOUGH_DATA (value 4) means there are pixels available to read.
+    if (videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA) {
+        gl.bindTexture(gl.TEXTURE_2D, videoTex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
+                    gl.UNSIGNED_BYTE, videoEl);
+        // Rebind skin texture to unit 0 so the figure still renders correctly
+        gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);  // 'texture' = your skin
+}
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    // Pass 1: all figure base layers
+    for (const obj of scene) {
+        if (!obj.overlay) drawObject(obj);
+    }
+    // Pass 2: all transparent overlay layers
+    // depthMask(false) means overlays still depth-TEST (so they hide behind
+    // other parts correctly) but don't depth-WRITE (so they don't block
+    // each other's transparent pixels)
+    gl.depthMask(false);
+    for (const obj of scene) {
+        if (obj.overlay) drawObject(obj);
+    }
+    gl.depthMask(true);
+    // Pass 3: Draw stage
+    for (const obj of stage){
+        drawObject(obj);
+    }
+
+    requestAnimationFrame(render);
+}
