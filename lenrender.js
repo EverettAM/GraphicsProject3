@@ -42,7 +42,91 @@ var meiko = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsA
 var kaito = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAWlBMVEUAAABagsZpnM9UbrpwrNQ0MEItKTc8OVHuzcTx2MvpwLtVV3FISGBAP1FbYH314tNMdLaLrtFyf7o8O2fvx23prltNhbtKcbJBRX5GU5JIYqKws8TM0Njt6tsaXwfRAAAAAXRSTlMAQObYZgAAA3FJREFUeNrtlu2SmzgQRdWtL2wc7yYDNqDu93/NvWqBl4zHGZczu79yDKIl0KkLGAq3sWzQNM/TvLgn2QvmBWC2LS8I5mmCYlp5NcHrAgQA8xckOBrTy9fguPKCoNF1B9B1z098yAyWxW0sjwVXpMfx7Q+0YL3uNA7M7sZ9d7lcL9clL+BqE+NyxRB62IPGrdRBLO4OHHtZ5poXgiM26GAI02eMQ+RAxoqRv93VOhZ8O7HlOiMA4r+9XZe3N5xGtiE0l8vcEozOoY/GYbx2AVyXCxoTxJznWX50hx8yzznHTVC31RAH7HcG9g9xTXAxJ67akmKcJv1++Ou7TlOMCUNgutrWgeh2oGMCxDHBPOF37Lb7n5IN3O6K23Hn2vAkmoBboSKiUsiTAvJuRQPn7ujuKf58eic4HCAQ6gGJWxmZ8qF7StABCHwP/E0wMD2d4HiUe4EGvk/gi5QqAKpCnsAmWGsV1DqOCoERdC9QFaG+CdSvaM63mjgQRsZBVcnQnwRSxf03YFfcqEH8VhMxeipaExqyFwxFCQGqQERoUAKMH2UCqqgLsWrRHTvBKOL92a5BKaqjVkIGQY3AQRh1sQjGTwIq3PfnviVQJa1wzDmylRICCxyWQFb2Ai3hBKqgFNEGxZgSqRFCW0VBMXQvEE4pxdQEda4ATjCwVEpgVQ4kRjFEdgJPGcQEvBcRKoASaBVXAXH9MW8C3guizW8weUyDJffnTCIQEBdsVwF5g/aCmCJYDSi8An8CVkEg9g81wXbYXpDe4QX4HrRqe6Rz5dAZh+z+8NWIuHdoaxpkixsH55gdQPsZ3hP56Azy6JP7FUTuDqZb1ZovQd0dH9t123wlKqowvq7WcXgsyO5/IBCHcOu4HSkC9ynR2Gr3H6NCPgG3wkGPXXbPczr7shcQj93h9wTD7yXgoM8n0BOAoEjxnkQZQLB+HjzxTjBBTyL2saBKFVUdIFByBkM0jLa9R7+BnoOqIMEqEEUXCz3xTpAqQARSOwXRjaLAfU6xa3D2XmQYME2ABSi1+dXjyLsE/bnvudTrJo2WQOSZBHYKIBQilWIoMIlbaf3HghRTSmxTDFm5Cdpd+fCV4BOIGZAXEd8EzEzMEHxOAs0QvSdOvkJNQN6thMAUwrunPf0riBVrV18T4JBGXHmUYM/6QVD58Ev9Hynvbc+3R6d+AAAAAElFTkSuQmCC";
 
 
+const VOCALOIDS = [
+    {
+        name:   'Miku',
+        skin:   miku,
+        video:  'https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/connectcommune.mp4',
+        glow:   { r: 0.0, g: 0.9, b: 0.8 },   // teal
+        bpm:    156,
+    },
+    {
+        name:   'Rin',
+        skin:   rin,
+        video:  'https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/doublehelix.mp4',
+        glow:   { r: 1.0, g: 0.5, b: 0.0 },   // orange
+        bpm:    190,
+    },
+    {
+        name:   'Len',
+        skin:   len,
+        video:  'https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/superhero.mp4',
+        glow:   { r: 1.0, g: 0.95, b: 0.0 },  // yellow
+        bpm:    110,
+    },
+    {
+        name:   'Kaito',
+        skin:   kaito,
+        video:  'https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/rainysnowdrop.mp4',
+        glow:   { r: 0.1, g: 0.3, b: 1.0 },   // blue
+        bpm:    192,
+    },
+    {
+        name:   'Meiko',
+        skin:   meiko,
+        video:  'https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/onandon.mp4',
+        glow:   { r: 1.0, g: 0.1, b: 0.1 },   // red
+        bpm:    126,
+    },
+    {
+        name:   'Luka',
+        skin:   luka,
+        video:  'https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/treatme.mp4',
+        glow:   { r: 1.0, g: 0.3, b: 0.6 },   // pink
+        bpm:    119,
+    },
+];
 
+var currentVocaloid = 0;  // index into VOCALOIDS
+
+function switchVocaloid(index) {
+    currentVocaloid = index;
+    const v = VOCALOIDS[index];
+
+    // --- Swap skin texture ---
+    const img = new Image();
+    img.onload = () => {
+        gl.bindTexture(gl.TEXTURE_2D, window.texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    };
+    img.src = v.skin;
+
+    // --- Swap video ---
+    videoEl.src = v.video;
+    videoEl.load();
+    videoEl.play().catch(e => console.warn("Video play failed:", e));
+
+    // --- Swap glowstick colors ---
+    // crowdFront and crowdBack alternate arm/glowstick objects (odd indices = glowsticks)
+    for (let i = 1; i < crowdFront.length; i += 2) {
+        crowdFront[i].r = v.glow.r;
+        crowdFront[i].g = v.glow.g;
+        crowdFront[i].b = v.glow.b;
+    }
+    for (let i = 1; i < crowdBack.length; i += 2) {
+        crowdBack[i].r = v.glow.r;
+        crowdBack[i].g = v.glow.g;
+        crowdBack[i].b = v.glow.b;
+    }
+
+    // --- Update BPM ---
+    songBPM = v.bpm;
+
+    // --- Update the glow light color uniform for PhongWithGlow ---
+    gl.uniform3f(window.uGlowLightColorLoc, v.glow.r, v.glow.g, v.glow.b);
+}
 // ---------------------------------------------------------------------------
 // faceUV: converts a pixel rectangle in a texture atlas into the 12 UV values
 // (6 vertices = 2 triangles) needed for one quad face of the cube.
@@ -416,7 +500,7 @@ for (let i = 0; i < 6; i++){
             tx: x,   ty: pivotY,  tz: pivotZ,
             lx: 0.0, ly: 0.25,  lz: 0.0,
             rx: 0.0, sx: 0.5, sy:3, sz: 0.5,
-            r: 1, g: 0, b: 0.4,
+            r: 0.0, g: 0.9, b: 0.8,
             emissive: 1.0,
         }
     )
@@ -439,7 +523,7 @@ for (let i = 0; i < 5; i++) {
             tx: x,   ty: pivotY,  tz: pivotZ,
             lx: 0.0, ly: 0.25,  lz: 0.0,
             rx: 0.0, sx: 0.5, sy: 3, sz: 0.5,
-            r: 1, g: 0, b: 0,
+            r: 0.0, g: 0.9, b: 0.8,
             emissive: 1.0,
         }
     );
@@ -555,6 +639,17 @@ window.onload = function init() {
     document.getElementById("Reset").onclick = () => {
         sDragY = 0.0;
         sDragX = 0.0;
+    };
+
+    document.getElementById("VocaloidNext").onclick = () => {
+        const next = (currentVocaloid + 1) % VOCALOIDS.length;
+        switchVocaloid(next);
+        document.getElementById("VocaloidName").textContent = VOCALOIDS[next].name;
+    };
+    document.getElementById("VocaloidPrev").onclick = () => {
+        const prev = (currentVocaloid - 1 + VOCALOIDS.length) % VOCALOIDS.length;
+        switchVocaloid(prev);
+        document.getElementById("VocaloidName").textContent = VOCALOIDS[prev].name;
     };
 
     // --- Mouse drag on canvas ---
@@ -775,6 +870,10 @@ window.onload = function init() {
     uLedModeLoc = gl.getUniformLocation(program, "uLedMode");
     var uEmissiveLoc = gl.getUniformLocation(program, "uEmissive");
     window.uEmissiveLoc = uEmissiveLoc;  // make accessible to drawObject
+    window.uGlowLightColorLoc = gl.getUniformLocation(program, "uGlowLightColor");
+    // Set the initial color to match whichever vocaloid starts on screen (Miku by default)
+    const v0 = VOCALOIDS[currentVocaloid];
+    gl.uniform3f(window.uGlowLightColorLoc, v0.glow.r, v0.glow.g, v0.glow.b);
 
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0.5, 0.5, 0.5, 1.0);
@@ -783,7 +882,7 @@ window.onload = function init() {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     // --- Texture setup (done ONCE here, not per frame) ---
-    texture = loadTexture(gl, kaito);
+    
     window.texture = texture;  
     const uTextureLoc = gl.getUniformLocation(program, "u_texture");
     // Activate texture unit 0 and bind our texture to it.
@@ -812,6 +911,11 @@ window.onload = function init() {
     window.videoTex = videoTex;
     window.videoEl  = videoEl;
 
+    //Set vocaloid and video
+    texture = loadTexture(gl, VOCALOIDS[currentVocaloid].skin);
+    songBPM = VOCALOIDS[currentVocaloid].bpm;
+    videoEl.src = VOCALOIDS[currentVocaloid].video;
+
     // Browsers block autoplay until user interaction.
     // Start the video on the first click or keypress anywhere on the page.
     const startVideo = () => {
@@ -828,6 +932,8 @@ window.onload = function init() {
         obj.ty -= 0.175;
         obj.tz -= -0.4
     }
+
+    
     render();
 };
 
