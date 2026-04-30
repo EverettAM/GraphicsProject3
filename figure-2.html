@@ -20,6 +20,11 @@ uniform float uLocalX;
 uniform float uLocalY;
 uniform float uLocalZ;
 
+uniform float uCameraX;
+uniform float uCameraY;
+uniform float uCameraScale;
+
+
 out vec2 vST;
 out vec3 vNormal;         // NEW: world-space normal for fragment shader
 out vec3 vWorldPos;       // NEW: world-space position for fragment shader
@@ -64,14 +69,26 @@ void main()
 
     mat4 modelMatrix = ry * txyz * rx * rz * local * sxyz;
 
-    gl_Position = modelMatrix * aPosition;
-    gl_PointSize = 10.0;
+    mat4 camRy = mat4(
+        cos(uCameraY),  0.0, sin(uCameraY), 0.0,
+        0.0,            1.0, 0.0,           0.0,
+       -sin(uCameraY),  0.0, cos(uCameraY), 0.0,
+        0.0,            0.0, 0.0,           1.0);
+
+    mat4 camRx = mat4(
+        1.0, 0.0,           0.0,           0.0,
+        0.0, cos(uCameraX), sin(uCameraX), 0.0,
+        0.0,-sin(uCameraX), cos(uCameraX), 0.0,
+        0.0, 0.0,           0.0,           1.0);
+
+    vec4 pos = camRx * camRy * modelMatrix * aPosition;
+    gl_Position = vec4(pos.xyz * uCameraScale, pos.w);    gl_PointSize = 10.0;
     vST = aTexCoord0.st;
 
     //Normal Matrix
-    mat3 modelMat3 = mat3(modelMatrix);
-    mat3 normalMatrix = transpose(inverse(modelMat3));
-    vNormal = normalize(normalMatrix * aNormal);
+    mat3 normalMatrix = transpose(inverse(mat3(camRx * camRy * modelMatrix)));
+    vNormal   = normalize(normalMatrix * aNormal);
+    vWorldPos = (camRx * camRy * modelMatrix * aPosition).xyz;
 }
 </script>
 
@@ -143,7 +160,7 @@ void main()
     if (uUseTexture > 0.5) {
         vec4 texColor = texture(u_texture, vST);
         if (uLedMode > 0.5) {
-            // LED screen dot overlay (unchanged from original)
+            // LED screen dot overlay 
             vec2 ledGrid = vec2(72.0, 54.0);
             vec2 cellUV  = fract(vST * ledGrid) - 0.5;
             float dist   = length(cellUV);
@@ -167,7 +184,7 @@ void main()
     // uEmissive == 0.0  → standard Phong only
 
     if (uEmissive > 0.9 && gl_FrontFacing) {
-    // Back face glow — works for both LED and solid color
+    // Front face glow — works for both LED and solid color
     outColor = vec4(baseColor.rgb * 1.4, baseColor.a);
     } else if (uLedMode > 0.5) {
         // Front face LED overlay with Phong
@@ -186,7 +203,7 @@ void main()
        crossorigin = "anonymous"
        loop autoplay playsinline
        style="display:none"></video>
-<canvas id="gl-canvas" width="512" height="512"></canvas>
+<canvas id="gl-canvas" width="800" height="800"></canvas>
 <script src="initShaders.js"></script>
 <!-- MVnew.js provides vec2/vec4/flatten helpers used by lenrender.js -->
 <script src="MVnew.js"></script>

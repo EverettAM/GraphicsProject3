@@ -53,7 +53,7 @@ var kaito = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsA
 const CAMERAS = [
     { name: 'Front',   angleY: 0.0,               angleX: 0.0  },
     { name: 'Side',    angleY: Math.PI / 2,        angleX: 0.0  },
-    { name: 'Top 3/4', angleY: Math.PI / 4,        angleX: 0.4  },
+    { name: 'Top 3/4', angleY: Math.PI / 4,        angleX: -0.4  },
 ];
 var currentCamera = 0;
 
@@ -76,9 +76,9 @@ const VOCALOIDS = [
     {
         name:   'Len',
         skin:   len,
-        video:  'https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/superhero.mp4',
+        video:  'https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/helloyellowgalaxy.mp4',
         glow:   { r: 1.0, g: 0.95, b: 0.0 },  // yellow
-        bpm:    110,
+        bpm:    190,
     },
     {
         name:   'Kaito',
@@ -468,6 +468,7 @@ const stage = [
         lx: 0.0,  ly: 0.0,   lz: 0.0,
         rx: 0.0,  sx: 10,     sy: 1.25,    sz: 3,
         r: 69/255, g: 71/255, b: 74/255,
+        emissive: 0.15,
     },
     { //Stage Screen (Ring)
          shape: 'cube',
@@ -475,6 +476,7 @@ const stage = [
         lx: 0.0,  ly: 0.0,   lz: 0.0,
         rx: 0.0,  sx: 9,     sy: 5.5,    sz: 0.5,
         r: 69/255, g: 71/255, b: 74/255,
+        emissive: 0.15,
     },
     { //Stage Screen (LED)
         shape: 'cube',
@@ -545,56 +547,6 @@ for (let i = 0; i < 6; i++) {
     );
 }
 
-// ---------------------------------------------------------------------------
-// initShaders: unchanged — compiles and links the GLSL program.
-// ---------------------------------------------------------------------------
-function initShaders(gl, vertexShaderId, fragmentShaderId) {
-    var vertShdr;
-    var fragShdr;
-
-    var vertElem = document.getElementById(vertexShaderId);
-    if (!vertElem) {
-        alert("Unable to load vertex shader " + vertexShaderId);
-        return -1;
-    } else {
-        vertShdr = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vertShdr, vertElem.textContent.replace(/^\s+|\s+$/g, ''));
-        gl.compileShader(vertShdr);
-        if (!gl.getShaderParameter(vertShdr, gl.COMPILE_STATUS)) {
-            alert("Vertex shader failed to compile. The error log is:"
-                + "<pre>" + gl.getShaderInfoLog(vertShdr) + "</pre>");
-            return -1;
-        }
-    }
-
-    var fragElem = document.getElementById(fragmentShaderId);
-    if (!fragElem) {
-        alert("Unable to load fragment shader " + fragmentShaderId);
-        return -1;
-    } else {
-        fragShdr = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fragShdr, fragElem.textContent.replace(/^\s+|\s+$/g, ''));
-        gl.compileShader(fragShdr);
-        if (!gl.getShaderParameter(fragShdr, gl.COMPILE_STATUS)) {
-            alert("Fragment shader failed to compile. The error log is:"
-                + "<pre>" + gl.getShaderInfoLog(fragShdr) + "</pre>");
-            return -1;
-        }
-    }
-
-    var program = gl.createProgram();
-    gl.attachShader(program, vertShdr);
-    gl.attachShader(program, fragShdr);
-    gl.linkProgram(program);
-
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        alert("Shader program failed to link. The error log is:"
-            + "<pre>" + gl.getProgramInfoLog(program) + "</pre>");
-        return -1;
-    }
-
-    return program;
-}
 
 // ---------------------------------------------------------------------------
 // loadTexture: creates a WebGL texture from a URL.
@@ -646,18 +598,6 @@ window.onload = function init() {
     gl      = canvas.getContext('webgl2');
     if (!gl) { alert("WebGL 2.0 isn't available"); }
 
-    // --- Slider controls for figure animation ---
-    // document.getElementById("DeltaX").oninput  = e => sDeltaX = e.target.value;
-    // document.getElementById("DeltaY").oninput  = e => sDeltaY = e.target.value;
-    // document.getElementById("ArmRight").oninput = e => sArmRightAngle = Math.PI / 180 * e.target.value;
-    // document.getElementById("ArmLeft").oninput  = e => sArmLeftAngle  = Math.PI / 180 * e.target.value;
-
-    // --- Reset button: snap drag rotation back to front-facing ---
-    // document.getElementById("Reset").onclick = () => {
-    //     sDragY = 0.0;
-    //     sDragX = 0.0;
-    // };
-
     document.getElementById("VocaloidNext").onclick = () => {
         const next = (currentVocaloid + 1) % VOCALOIDS.length;
         switchVocaloid(next);
@@ -674,51 +614,6 @@ window.onload = function init() {
         targetCameraX = CAMERAS[currentCamera].angleX;
         document.getElementById("CameraName").textContent = CAMERAS[currentCamera].name;
     };
-
-    // // --- Mouse drag on canvas ---
-    // // Each pixel of drag moves the figure ~0.5 degrees.
-    // // DRAG_SCALE controls sensitivity; lower = slower rotation.
-    // const DRAG_SCALE = 0.005;
-
-    // canvas.addEventListener("mousedown", e => {
-    //     dragActive = true;
-    //     lastMouseX = e.clientX;
-    //     lastMouseY = e.clientY;
-    //     // Prevent text selection while dragging
-    //     e.preventDefault();
-    // });
-    // window.addEventListener("mouseup",   () => { dragActive = false; });
-    // window.addEventListener("mousemove", e => {
-    //     if (!dragActive) return;
-    //     const dx = e.clientX - lastMouseX;
-    //     const dy = e.clientY - lastMouseY;
-    //     lastMouseX = e.clientX;
-    //     lastMouseY = e.clientY;
-    //     // Horizontal drag → Y-axis rotation (turntable)
-    //     sDragY += dx * DRAG_SCALE;
-    //     // Vertical drag   → X-axis tilt, clamped so it can't flip upside-down
-    //     sDragX += dy * DRAG_SCALE;
-    //     sDragX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, sDragX));
-    // });
-
-    // // --- Touch drag on canvas (mobile / tablet) ---
-    // canvas.addEventListener("touchstart", e => {
-    //     dragActive = true;
-    //     lastMouseX = e.touches[0].clientX;
-    //     lastMouseY = e.touches[0].clientY;
-    //     e.preventDefault();
-    // }, { passive: false });
-    // window.addEventListener("touchend",  () => { dragActive = false; });
-    // window.addEventListener("touchmove", e => {
-    //     if (!dragActive) return;
-    //     const dx = e.touches[0].clientX - lastMouseX;
-    //     const dy = e.touches[0].clientY - lastMouseY;
-    //     lastMouseX = e.touches[0].clientX;
-    //     lastMouseY = e.touches[0].clientY;
-    //     sDragY += dx * DRAG_SCALE;
-    //     sDragX += dy * DRAG_SCALE;
-    //     sDragX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, sDragX));
-    // }, { passive: false });
 
     program = initShaders(gl, "vertex-shader", "fragment-shader");
     gl.useProgram(program);
@@ -879,7 +774,7 @@ window.onload = function init() {
     uUseTextureLoc = gl.getUniformLocation(program, "uUseTexture");
     uAngleZLoc = gl.getUniformLocation(program, "uAngleZ");
     uAngleXLoc = gl.getUniformLocation(program, "uAngleX");
-    uAngleYLoc = gl.getUniformLocation(program, "uAngleY");   // drag rotation
+    uAngleYLoc = gl.getUniformLocation(program, "uAngleY");   
     uDeltaXLoc = gl.getUniformLocation(program, "uDeltaX");
     uDeltaYLoc = gl.getUniformLocation(program, "uDeltaY");
     uDeltaZLoc = gl.getUniformLocation(program, "uDeltaZ");
@@ -895,18 +790,26 @@ window.onload = function init() {
     window.uEmissiveLoc = uEmissiveLoc;  // make accessible to drawObject
     window.uGlowLightColorLoc = gl.getUniformLocation(program, "uGlowLightColor");
     // Set the initial color to match whichever vocaloid starts on screen (Miku by default)
+
+    window.uCameraXLoc = gl.getUniformLocation(program, "uCameraX");
+    window.uCameraYLoc = gl.getUniformLocation(program, "uCameraY");
+    window.uCameraScaleLoc = gl.getUniformLocation(program, "uCameraScale");
+    gl.uniform1f(window.uCameraScaleLoc, 0.8);
+    // Set initial values
+    gl.uniform1f(window.uCameraXLoc, 0.0);
+    gl.uniform1f(window.uCameraYLoc, 0.0);
     const v0 = VOCALOIDS[currentVocaloid];
     gl.uniform3f(window.uGlowLightColorLoc, v0.glow.r, v0.glow.g, v0.glow.b);
 
     gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clearColor(0.5, 0.5, 0.5, 1.0);
+    gl.clearColor(0.3, 0.3, 0.3, 1.0);
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     // --- Texture setup (done ONCE here, not per frame) ---
     
-    window.texture = texture;  
+    
     const uTextureLoc = gl.getUniformLocation(program, "u_texture");
     // Activate texture unit 0 and bind our texture to it.
     gl.activeTexture(gl.TEXTURE0);
@@ -936,6 +839,7 @@ window.onload = function init() {
 
     //Set vocaloid and video
     texture = loadTexture(gl, VOCALOIDS[currentVocaloid].skin);
+    window.texture = texture;  
     songBPM = VOCALOIDS[currentVocaloid].bpm;
     videoEl.src = VOCALOIDS[currentVocaloid].video;
 
@@ -980,14 +884,14 @@ function drawObject(obj) {
         gl.bindTexture(gl.TEXTURE_2D, window.videoTex);
     }
 
-    let angleX = 0.0;
-    if (obj.armAngle === 'right') angleX = sArmRightAngle;
-    if (obj.armAngle === 'left')  angleX = sArmLeftAngle;
+    // let angleX = 0.0;
+    // if (obj.armAngle === 'right') angleX = sArmRightAngle;
+    // if (obj.armAngle === 'left')  angleX = sArmLeftAngle;
 
     // Guard against missing rx — default to 0 if not set
     gl.uniform1f(uAngleZLoc, (obj.crowdAngle ?? 0.0) + (obj.rx ?? 0.0));
     gl.uniform1f(uAngleXLoc, 0.0);
-    gl.uniform1f(uAngleYLoc, cameraAngleY + (obj.figureTwist ?? 0.0));  // driven by camera
+    gl.uniform1f(uAngleYLoc, obj.figureTwist ?? 0.0);  // driven by camera
     gl.uniform1f(uDeltaXLoc, obj.tx);
     gl.uniform1f(uDeltaYLoc, obj.ty);
     gl.uniform1f(uDeltaZLoc, obj.tz);
@@ -1016,6 +920,10 @@ function drawObject(obj) {
 function render(timestamp) {
     cameraAngleY += (targetCameraY - cameraAngleY) * CAMERA_LERP;
     cameraAngleX += (targetCameraX - cameraAngleX) * CAMERA_LERP;
+    
+    gl.uniform1f(window.uCameraXLoc, cameraAngleX);
+    gl.uniform1f(window.uCameraYLoc, cameraAngleY);
+
     if (!timestamp) {
         requestAnimationFrame(render);
         return;
