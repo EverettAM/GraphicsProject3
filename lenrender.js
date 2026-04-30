@@ -13,20 +13,27 @@ const SWING_DEGREES = 45.0;  // how far the stick swings each direction
 var songBPM = 196;
 var jumpVal;
 
+
+// --- Camera Controls ---
+var cameraAngleY  = 0.0;   // current Y rotation (radians) applied to whole scene
+var cameraAngleX  = 0.0;   // current X tilt
+var targetCameraY = 0.0;
+var targetCameraX = 0.0;
+const CAMERA_LERP = 0.08;  // lower = slower/smoother
 // --- Slider state ---
-var sArmRightAngle = 0.0;
-var sArmLeftAngle  = 0.0;
-var sDeltaX = 0.0;
-var sDeltaY = 0.0;
+// var sArmRightAngle = 0.0;
+// var sArmLeftAngle  = 0.0;
+// var sDeltaX = 0.0;
+// var sDeltaY = 0.0;
 
 // --- Drag rotation state ---
 // sDragX/Y accumulate total rotation from mouse/touch dragging.
 // dragActive, lastX/Y track the in-progress drag.
-var sDragY = 0.0;   // y-axis rotation (left/right drag) in radians
-var sDragX = 0.0;   // x-axis rotation (up/down drag) in radians
-var dragActive = false;
-var lastMouseX = 0;
-var lastMouseY = 0;
+// var sDragY = 0.0;   // y-axis rotation (left/right drag) in radians
+// var sDragX = 0.0;   // x-axis rotation (up/down drag) in radians
+// var dragActive = false;
+// var lastMouseX = 0;
+// var lastMouseY = 0;
 
 const CUBE_FIRST    = 0;
 const CUBE_COUNT    = 36;
@@ -34,12 +41,21 @@ const PYRAMID_FIRST = 36;
 const PYRAMID_COUNT = 18;
 var cubeSize = 0.1;
 
+
+
 var miku = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAvVBMVEUAAAAAUHYmmaMRGzkbf5g4tKwIFBIeIiv+7+bwtrb31s0LSGcXIz/p5GIp2NEq2tAxKDVILD0yJzXpUHiAOVFnM0ggj7HjozbadkIbbrL////G4uoAP2dhn6tMLT9GLD3mJE3udnpZMEMqJjJAKjo0OTwWj5cmy8QdqqsfISQivrrYLHwWkZgPdYMQEy4QGDUPEi3i4ecAAACbHVcAHU0kL0oBAAbZ7NulqbXN0NkiJC+23dENCyOGw8KSzsezoHxXAAAAAXRSTlMAQObYZgAAA7dJREFUeNq1lol2mzoQQGcGcAR225ele/v2tQ1xsGMwBs3/f9abkVgMKcbuOb1nohGydBmQ4mNo4e2GebNla1mwFsZwDpAzMIMg7ZjtdkO02W6nBPxVBV95UrDZoLCRMtAFjMjzpp1C1ESsIJEKLuXQwBQLxFOfwxRMKBBz7GC4FK6YSBpMEmOSBC8XeERghGnB4RaG6P4feMBBz0N7LnT/DyMH5NyeC93/vDhwwWwdLN1DkW+FnFlywdAIyFpqBMCFjmuGPGcRVGRZJ7ClSgScCxVxoS3ATwBWP2SS5C6p0nHNgE9c4YEQMRYk0QErfkJ8IuTqCQkB4Gfg9oAx/AIASDquWQTSl8DVKo5XK0R3qQLNXvD67pqIgQiY6Pru9UBgtQJOcPXxUxx/+rjChLUCa58qrcBWCHB3e4OSgAAQb27vJFU6rhlkGjvBh8/GfP7QCHRCgbbAqiAo6PqGCBxEN9dUABUyTiwZrGUJxHb/EVmHBPbBIPHHn7+7/XcaHRLAh7IMgiCKohAakNAYaYI6qCUCaJAb+FljgucCQQQNvSCOjJ+FAk0K4tIRnxIQQC9YPhO8MuaVCCYfoa9AFy+XtcwTJC31QLUCf7CwLKUxjsRhzFEFJgyNWXYYLB3/fPFZBGWWlacEntghHSodX1KfiawKLI0EPZEndEhHBPt9Wf6banYCLku2NLzP0Tu48iwc0tnLQlmapntJKuEqyyrehwNAV08KdGGaanICrYD3w2nHFej1ouPK7pXyv7R0HWu5FNhevXg5EBA0OHEUdRVgEKxr/wj1OggQrfPg1bv3/Y1GAuVY8FivNdb1owroYb1+IBxVIAwFdS/Y1fVj/ShR1zsRPNQPErh4+2bRc1yBLOtrE5MKPCqoa9QO6g2GgqlzIGe6Fxz1h9O8YJ4AAgl4zpxgHhQIfiDzjyDQYGKbzmRUfwhhm3B8pybDkOlXQABlmWVwn2VlCUDUDF+yC73gO3ehhDK7v88kgVK5GB2kWe5TOIm1Fk7y15wApgTo09/p6V2wdkaQwoyACAgm2cFOounXOwkYf6EQnDIEIpBGWYhCVbL6IkEgccb/w9T6IFiGUb/biTHf2nucLkA4FsQiMNFMBZcLlMseYZrBC2t+J7S/GxLFNCQTghDCrrP0mPZ3w0gwT6yYjrgV/PbrmYJQiTrCgTCGefxR61iEA0Y3CM8QOLqrcyvQJf6vE7x8cYkgigYVqOH9O724/B18XwX1SKC8eastwKywu6VvRowqXJxxDua27X9vNLBJUznaFgAAAABJRU5ErkJggg==";
 var rin = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAP1BMVEUAAAD/3Iv/y3L/77/96tz94M7////+8//+23mNTkVDf5CK0O79ybSWW1X2s2R2S0a53Ov9/t/HvbHokknrim/BE3XyAAAAAXRSTlMAQObYZgAAAn9JREFUeNrdlotyozAMRXWNkZNNZff1/9+6khB1IZCEdHY6s6e2LHXCiQmMbZrBCjpKSmkYNDwtAAYFQB6V/PwM/pmAmSPsULgoXHYFpbB12oMnAe8JiNn7LkgJ3rMDehQYpSCIvBNfHlxXhISU/KKkuECHBG02TgLtCcOA5PWWgIE0KgngtcBhBhiqONGKIQ0pMQ9pdNLAnJL+U5uP8QhPAyUGDzhpsSHQcD6P4/msybWgcPGr7HMnLa5vQcOZ/+TxD5/neh5DcAI5uCG45HzZECRKzNwFWiRKRBp8xMxLVl6whkAaSryDoKnuoyNKVSiQ2nJuVWYosFc0Z1rwPwjaF9LTSRD5FMYF1JGJNoesCIRZ4PmXIOdxtGb9nqAKRFsNWWsuc1Swuo1xBXJGqVK1FcvNJSHoUMeU33sBSikVqKVYLgJF9gV9alNgXxirOYrn4riyVtigCXWs9B4JGxXMkarEexOxJ2WDJtSx0nskxa6BCeBpCY28XqRz4ykUX99NUDy1aINcXh8TjDs8PAN7EsvujDdmwM7b2yRA9b/3d4sf+Ii6ygLaAKAfAeVXBc/fQnN6RUcRp1ceSTy4kppCB8ViJpnT1qw4hmjrLjkuqNYckYiHgAkQBoMOUuGSBY9afBEgMGNKS2EfhOjIekDMVCwNDghohxuCFhwX9JcX6C/1Dliw/YndzTY21dtA+T3Bz2/hvQXv00aDFmB9LtijilOJ4n2YWZ8LdvEtE7Qt2NqVPz9pm3FFXkD3sW/sc87HBTkvrhrjQFDhge7TzwrwFgeCJh4eWB6+nxW8TcTeSmSxZxu/+lUdvF6eFdyfQQuenMF6PXhT2OmCzvW68Bc1SkMmJ3v5wwAAAABJRU5ErkJggg=="
 var len = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAArlBMVEUAAACMkaV3e5/7/bRhZJn+mpr/8LXro5fghX7/2q39/eP////h5vp0eqwAUHb7/bL//+7+/f/Y4//6+/8wOl3++7b9vY3x9NXG4upgo7T/u5L+/rb//9H9/7vo7Or//9j//+Ht8d6L277/8rH/xqv44KDp7P+ksLj/t6j+x6nyy4hxdKvTy/1xfLLurGiKnLB9iK3/w8//4N7/8+f37Kro5v769/6Km62Gw8ImmaO4fIlEAAAAAXRSTlMAQObYZgAAAzxJREFUeNq9lgtjmjAQxxO0SQDnVmefa7utXa2KD14G+/2/2O4uSaOgsmq7n5FckPtzl+AR5hAOaQ7svYhIRgJaaATC9wsIFQklAEXtGAFhBaQ8RiC2CJkBUuz7vT2FjDh+ElWeF0We994vYAF/oEWg933bMRae+pDyZ57GMBIiigUcQ0KAGWMucAbtyHvIMJQ7BEKJAkKG0MCGhgIK7cEgkqH1CPGEkNB5gVCQLi5/LJVSGQCdjJV5FuRgAD1DvjHx9pzAoCYgqanhMMuGQwW2a2Abgau7X1IKJiUTUv68u2IGE15IwrlS1zdZdnOtVA+GmIKCAzQG/L5/UAp6UFPq4R4FCFKPlAhBIM/jx6J4jOEJIMcoAgEZqcik0JPS+sgepeARUkB4Knfr3+vhGCfM9PX13wnnQbfT6ZwxS7pMl9BS/pV/+cI5ZxatV0WR/ZMAPs4gwOsCMxR4XTP2Sqz3CWQokB0SIN82gUMp+Ag40gm6RHDJU8ClgLj50MSK0BoEXAQXnN/ect4lOL8Ya50kL8uiWL4kidbj8dMf4Gm8Am8P8/DLH5CBiyDgGlmmo1G61MZOltB0LQKfQsdwRoChDaOR9oCHLokFUZYbk8iBWgQIXPu8JVARc6KqNiIoTAnLCLAxQBLwIRN0nbuscCu4NwUS8DRT8HDErwI3N55NJhCKp5nCep/AvgjSqkpTJ5BuCASIn8RAGyYTrZsRpHMirTYFyK3rCGbIipht2uV0WpbTBTEtDzwHHKH/gANsOFEQGVEU7FR8BMcCvqdhb/9hEXSOnYOmbydhWySJKSiJxoKkXWWq395VLeqJ83N2kPW6ZQpaBeDjaURAPLNNKsLZFMFJrF+B09YRP58pYIuOp8LU/QDp9/u+oDACjUNUW13f+AQBlmVXXayAe3l4uwlF8El0ISgsLm8xaA1F5ASB2f8UOD0FU5u5JeiuEG1xq6HbBPgbKGA1NpYTtOyh+W90b2kiaETQjn0/OM4WSGlZsDrtEcyRyjJnBjdmO3D7hK19gxtmH55C+yrUUjhaILXbA18hzdfBLX4SHUYgrYh0Xq8LjoBmHL8kQAp4AMtuCOz24IhJzJCC2LnV/ws3i85ynQRyOQAAAABJRU5ErkJggg=="
 var luka = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAh1BMVEUAAACCgoL/////9+j86ePy7OHH9v/v59vf5uvy38vy4L31zcbd18zryrLmzaii3vzTxbfmtqHxrKzOtqXUtoybt73ZnY/viqTHoXW4jGXja5N9kp7fXYmhgWyweFjZV4+MalZqb32MT3tVWWt4UD2AQGZ1MlNCRVdZOC4xM0VeHTUmJjMAAACcJ39UAAAAAnRSTlMARAciSLEAAAOVSURBVHja7ZZhc+MoDIZzta9XG0NilhZBm9St01IV///fdxIME3edmTjbmf2yqwFEGL9PEBijTTErrNbUeOu1pmZzrQlSkVZYonBzNcDaZ++fiWF1XWvrnzeHzeN0BSCosW1HFawWdS2I8OA29/Gf9QAzqpcXNRpvZdNI620Pn1v8WA/QOQStpawaKcmb99twvAbAi3gCiEa93Y3DeoAtJjmE3tZV+3rzsl8hFDYYra0tprUJNFjei8uAWhsU4gQQAo2uLY0LoesZgIHnYq81Qi00z51mzrsISINUakHNSc9AexYAjgE5dgY4+AoAlpf3gxHwFQDx1glt3z+r5vOdnnO3Ec4BNrUgtwQIN20PQr/dPVbN492bFoftREAtbC2sYICjykJB/ukpD8yXxrsDRfd6c1819zevFOnBeW1pXAhfgibh3M/N5wNc9p+EOg0tjvVTbs5axBhAgfv52+DAKGVO47tudxyO07QAYIzRtAZmOy4EIVjfqtN49283NMMZAOlxDvC2aprKejDdf123AhAixnkI3jdSNt472HXd7kIIHD8DiofdDryPUkbvuV/Wg1E7KtnNIDFgoBKLdz9+OOsB0VvL/XImwACAcVS5zACYhVg8/6vGAFurNffLGzkM+1KofplBRKSmeN44LcyotNDcL4A8A1jOAAyNTLwGU4wTQhhDCPXYqlboQD8KoJey76lkNwOwbEob3ipF6CQaX8aWRAwrgIe+f3igkt08BIxkSDp6GlMP0Y4cAnK/AD6Ox48PKtnNAMYoKuCcAyrKpBlFTJ857pdTaYZbfi5FrMwMwHoTJ9ZTbU3ENA2+Yjz3y6k0+60xrSEIuzkgj+QVpg7vKOnHdgwe+Uc+lWiGfQIoQ24xA4yszgAWBdV2KuvR833h0ewHUuYQvgByUBw/VwXsyxnIfeO9AXcchuORSnYE+Gt/7U8zkZtfN70RgprNtxDfM/4ebH6z8TXnQMHsUu2b/oqPSEBE/rzNrnVZySsApA/fAnAEvxwCx58A2cdFXnDJSBNCdH3v2AdMF87pVl4DmEKYQEpgH3CRF1yyiCSEvmkqIADGRV5wyaY4IZoDXyjO0Y+cEHDhugLAWYmJIV9rRFnkBZfXgJUjJsIYMClLZrIGkK95la9hBS4pOW2UVPs1ACZM0SRCCy4pK1azWwFIy31KBCAruV0JYD1ELKkIpBDKDNaEkHOCkgyVNejZnT0P/wPmW6LCQfNg4gAAAABJRU5ErkJggg==";
 var meiko = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAP1BMVEUAAACBaExMPSiggV5ZQy1tVTvcr5Hdyao9NSKxe1xgTjXi2L9/JCUzJhhRCg+9OjueKTGhb1Z5TEFsEx2BV0yqKmepAAAAAXRSTlMAQObYZgAAAnRJREFUeNrtltuyqyAMQMNFQDaVWPr/33oSQsXu3tRO99NZY6Mw6eLmIHBFNXQD9qKMUfT7SGAsCayu2GOCwShlK+qIYOAeGOe8d84c6sGHAplEKwK7XyDsF6gn2MZWgTG2YsxeAc+bMqYLWoWy5KAABgSqBLUU7gTWhpEI1nYBUQVG8gYFg5HnXQJQoDhvgAHIAFzB2BYkTemg4zhGulHxdg7EoAZgmnAF5xsS6B/lvfrRJODWu6CNeIDKIEXCagBtAShHlkDWXxaCom70liQ8JBEhhBM0pkZqQMP75Nz4DUEm1oJEz6cQUm58V5AXUoU73gRcWvAVqRrXEmS6QEY+VrYJnDDP8/l8plgKCzzBglLKVCkikMwHAk8NXi6XcZ5TxRGJEQlJnwq8IAKKqYIhYLphnfZGwNOBOSM/HBVkdA7zNkGuRK11qAsnAk9sFERN5EzhxGuv59kRnnDETIzEPCM2IS9JgY6OBDfP0I0tndMCYkDEB4IoyBAoyhCE+yHI63IzBC1IaxS74OUc/Oc3GW5J/dbpVQXWIF24GNIkdQHowpqdKqVlPxFg3045ijC32kLAPnJ2AC5nOAxm6cBxMl87iBEOE2/+rrXMQY8pSXxhWCv0q1HtYP1BShUWfJMY11PwOYngzWUpez8695eCTPy1IOfe/bzQzgt9R51+bRSlCxABcEqLAJnpiQDvBSgCSqiHhNWhoRaughneU7+w/ioYL8cE6092L1Ppa4IYPxSIImoNUL+wcVnGsLUH8iPB6STnBSLy174uoyxsKdOG/SEwWk4N9BCqABHDdgG33Q8N9b24DuG8YT+oh4TVoeHdHPwDBxI+E4zZ/CYAAAAASUVORK5CYII=";
 var kaito = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAWlBMVEUAAABagsZpnM9UbrpwrNQ0MEItKTc8OVHuzcTx2MvpwLtVV3FISGBAP1FbYH314tNMdLaLrtFyf7o8O2fvx23prltNhbtKcbJBRX5GU5JIYqKws8TM0Njt6tsaXwfRAAAAAXRSTlMAQObYZgAAA3FJREFUeNrtlu2SmzgQRdWtL2wc7yYDNqDu93/NvWqBl4zHGZczu79yDKIl0KkLGAq3sWzQNM/TvLgn2QvmBWC2LS8I5mmCYlp5NcHrAgQA8xckOBrTy9fguPKCoNF1B9B1z098yAyWxW0sjwVXpMfx7Q+0YL3uNA7M7sZ9d7lcL9clL+BqE+NyxRB62IPGrdRBLO4OHHtZ5poXgiM26GAI02eMQ+RAxoqRv93VOhZ8O7HlOiMA4r+9XZe3N5xGtiE0l8vcEozOoY/GYbx2AVyXCxoTxJznWX50hx8yzznHTVC31RAH7HcG9g9xTXAxJ67akmKcJv1++Ou7TlOMCUNgutrWgeh2oGMCxDHBPOF37Lb7n5IN3O6K23Hn2vAkmoBboSKiUsiTAvJuRQPn7ujuKf58eic4HCAQ6gGJWxmZ8qF7StABCHwP/E0wMD2d4HiUe4EGvk/gi5QqAKpCnsAmWGsV1DqOCoERdC9QFaG+CdSvaM63mjgQRsZBVcnQnwRSxf03YFfcqEH8VhMxeipaExqyFwxFCQGqQERoUAKMH2UCqqgLsWrRHTvBKOL92a5BKaqjVkIGQY3AQRh1sQjGTwIq3PfnviVQJa1wzDmylRICCxyWQFb2Ai3hBKqgFNEGxZgSqRFCW0VBMXQvEE4pxdQEda4ATjCwVEpgVQ4kRjFEdgJPGcQEvBcRKoASaBVXAXH9MW8C3guizW8weUyDJffnTCIQEBdsVwF5g/aCmCJYDSi8An8CVkEg9g81wXbYXpDe4QX4HrRqe6Rz5dAZh+z+8NWIuHdoaxpkixsH55gdQPsZ3hP56Azy6JP7FUTuDqZb1ZovQd0dH9t123wlKqowvq7WcXgsyO5/IBCHcOu4HSkC9ynR2Gr3H6NCPgG3wkGPXXbPczr7shcQj93h9wTD7yXgoM8n0BOAoEjxnkQZQLB+HjzxTjBBTyL2saBKFVUdIFByBkM0jLa9R7+BnoOqIMEqEEUXCz3xTpAqQARSOwXRjaLAfU6xa3D2XmQYME2ABSi1+dXjyLsE/bnvudTrJo2WQOSZBHYKIBQilWIoMIlbaf3HghRTSmxTDFm5Cdpd+fCV4BOIGZAXEd8EzEzMEHxOAs0QvSdOvkJNQN6thMAUwrunPf0riBVrV18T4JBGXHmUYM/6QVD58Ev9Hynvbc+3R6d+AAAAAElFTkSuQmCC";
+
+const CAMERAS = [
+    { name: 'Front',   angleY: 0.0,               angleX: 0.0  },
+    { name: 'Side',    angleY: Math.PI / 2,        angleX: 0.0  },
+    { name: 'Top 3/4', angleY: Math.PI / 4,        angleX: 0.4  },
+];
+var currentCamera = 0;
 
 
 const VOCALOIDS = [
@@ -484,7 +500,7 @@ const stage = [
 
 const crowdFront = [];
 for (let i = 0; i < 6; i++){
-    x = -0.8 + i * 0.4;
+    x = -0.7 + i * 0.3;
     const pivotY = -0.95;   // shared pivot point in world space
     const pivotZ = -0.4;
     crowdFront.push(
@@ -506,10 +522,10 @@ for (let i = 0; i < 6; i++){
     )
 }
 const crowdBack = [];
-for (let i = 0; i < 5; i++) {
-    x = -0.8 + i * 0.4;
+for (let i = 0; i < 6; i++) {
+    x = -0.6 + i * 0.3;
     const pivotY = -0.95;   // shared pivot point in world space
-    const pivotZ = -0.9;
+    const pivotZ = -0.8;
     crowdBack.push(
         { //Arm
             shape: 'cube',
@@ -630,16 +646,17 @@ window.onload = function init() {
     gl      = canvas.getContext('webgl2');
     if (!gl) { alert("WebGL 2.0 isn't available"); }
 
-    document.getElementById("DeltaX").oninput  = e => sDeltaX = e.target.value;
-    document.getElementById("DeltaY").oninput  = e => sDeltaY = e.target.value;
-    document.getElementById("ArmRight").oninput = e => sArmRightAngle = Math.PI / 180 * e.target.value;
-    document.getElementById("ArmLeft").oninput  = e => sArmLeftAngle  = Math.PI / 180 * e.target.value;
+    // --- Slider controls for figure animation ---
+    // document.getElementById("DeltaX").oninput  = e => sDeltaX = e.target.value;
+    // document.getElementById("DeltaY").oninput  = e => sDeltaY = e.target.value;
+    // document.getElementById("ArmRight").oninput = e => sArmRightAngle = Math.PI / 180 * e.target.value;
+    // document.getElementById("ArmLeft").oninput  = e => sArmLeftAngle  = Math.PI / 180 * e.target.value;
 
     // --- Reset button: snap drag rotation back to front-facing ---
-    document.getElementById("Reset").onclick = () => {
-        sDragY = 0.0;
-        sDragX = 0.0;
-    };
+    // document.getElementById("Reset").onclick = () => {
+    //     sDragY = 0.0;
+    //     sDragX = 0.0;
+    // };
 
     document.getElementById("VocaloidNext").onclick = () => {
         const next = (currentVocaloid + 1) % VOCALOIDS.length;
@@ -651,51 +668,57 @@ window.onload = function init() {
         switchVocaloid(prev);
         document.getElementById("VocaloidName").textContent = VOCALOIDS[prev].name;
     };
+    document.getElementById("CameraBtn").onclick = () => {
+        currentCamera = (currentCamera + 1) % CAMERAS.length;
+        targetCameraY = CAMERAS[currentCamera].angleY;
+        targetCameraX = CAMERAS[currentCamera].angleX;
+        document.getElementById("CameraName").textContent = CAMERAS[currentCamera].name;
+    };
 
-    // --- Mouse drag on canvas ---
-    // Each pixel of drag moves the figure ~0.5 degrees.
-    // DRAG_SCALE controls sensitivity; lower = slower rotation.
-    const DRAG_SCALE = 0.005;
+    // // --- Mouse drag on canvas ---
+    // // Each pixel of drag moves the figure ~0.5 degrees.
+    // // DRAG_SCALE controls sensitivity; lower = slower rotation.
+    // const DRAG_SCALE = 0.005;
 
-    canvas.addEventListener("mousedown", e => {
-        dragActive = true;
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-        // Prevent text selection while dragging
-        e.preventDefault();
-    });
-    window.addEventListener("mouseup",   () => { dragActive = false; });
-    window.addEventListener("mousemove", e => {
-        if (!dragActive) return;
-        const dx = e.clientX - lastMouseX;
-        const dy = e.clientY - lastMouseY;
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-        // Horizontal drag → Y-axis rotation (turntable)
-        sDragY += dx * DRAG_SCALE;
-        // Vertical drag   → X-axis tilt, clamped so it can't flip upside-down
-        sDragX += dy * DRAG_SCALE;
-        sDragX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, sDragX));
-    });
+    // canvas.addEventListener("mousedown", e => {
+    //     dragActive = true;
+    //     lastMouseX = e.clientX;
+    //     lastMouseY = e.clientY;
+    //     // Prevent text selection while dragging
+    //     e.preventDefault();
+    // });
+    // window.addEventListener("mouseup",   () => { dragActive = false; });
+    // window.addEventListener("mousemove", e => {
+    //     if (!dragActive) return;
+    //     const dx = e.clientX - lastMouseX;
+    //     const dy = e.clientY - lastMouseY;
+    //     lastMouseX = e.clientX;
+    //     lastMouseY = e.clientY;
+    //     // Horizontal drag → Y-axis rotation (turntable)
+    //     sDragY += dx * DRAG_SCALE;
+    //     // Vertical drag   → X-axis tilt, clamped so it can't flip upside-down
+    //     sDragX += dy * DRAG_SCALE;
+    //     sDragX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, sDragX));
+    // });
 
-    // --- Touch drag on canvas (mobile / tablet) ---
-    canvas.addEventListener("touchstart", e => {
-        dragActive = true;
-        lastMouseX = e.touches[0].clientX;
-        lastMouseY = e.touches[0].clientY;
-        e.preventDefault();
-    }, { passive: false });
-    window.addEventListener("touchend",  () => { dragActive = false; });
-    window.addEventListener("touchmove", e => {
-        if (!dragActive) return;
-        const dx = e.touches[0].clientX - lastMouseX;
-        const dy = e.touches[0].clientY - lastMouseY;
-        lastMouseX = e.touches[0].clientX;
-        lastMouseY = e.touches[0].clientY;
-        sDragY += dx * DRAG_SCALE;
-        sDragX += dy * DRAG_SCALE;
-        sDragX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, sDragX));
-    }, { passive: false });
+    // // --- Touch drag on canvas (mobile / tablet) ---
+    // canvas.addEventListener("touchstart", e => {
+    //     dragActive = true;
+    //     lastMouseX = e.touches[0].clientX;
+    //     lastMouseY = e.touches[0].clientY;
+    //     e.preventDefault();
+    // }, { passive: false });
+    // window.addEventListener("touchend",  () => { dragActive = false; });
+    // window.addEventListener("touchmove", e => {
+    //     if (!dragActive) return;
+    //     const dx = e.touches[0].clientX - lastMouseX;
+    //     const dy = e.touches[0].clientY - lastMouseY;
+    //     lastMouseX = e.touches[0].clientX;
+    //     lastMouseY = e.touches[0].clientY;
+    //     sDragY += dx * DRAG_SCALE;
+    //     sDragX += dy * DRAG_SCALE;
+    //     sDragX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, sDragX));
+    // }, { passive: false });
 
     program = initShaders(gl, "vertex-shader", "fragment-shader");
     gl.useProgram(program);
@@ -932,6 +955,9 @@ window.onload = function init() {
         obj.ty -= 0.175;
         obj.tz -= -0.4
     }
+    for (const obj of scene) {
+        obj.baseTy = obj.ty;
+    }
 
     
     render();
@@ -960,10 +986,10 @@ function drawObject(obj) {
 
     // Guard against missing rx — default to 0 if not set
     gl.uniform1f(uAngleZLoc, (obj.crowdAngle ?? 0.0) + (obj.rx ?? 0.0));
-    gl.uniform1f(uAngleXLoc, angleX + sDragX);
-    gl.uniform1f(uAngleYLoc, sDragY);
-    gl.uniform1f(uDeltaXLoc, obj.tx + parseFloat(sDeltaX));
-    gl.uniform1f(uDeltaYLoc, obj.ty + parseFloat(sDeltaY));
+    gl.uniform1f(uAngleXLoc, 0.0);
+    gl.uniform1f(uAngleYLoc, cameraAngleY + (obj.figureTwist ?? 0.0));  // driven by camera
+    gl.uniform1f(uDeltaXLoc, obj.tx);
+    gl.uniform1f(uDeltaYLoc, obj.ty);
     gl.uniform1f(uDeltaZLoc, obj.tz);
     gl.uniform1f(uScaleXLoc, obj.sx);
     gl.uniform1f(uScaleYLoc, obj.sy);
@@ -988,6 +1014,8 @@ function drawObject(obj) {
 }
 
 function render(timestamp) {
+    cameraAngleY += (targetCameraY - cameraAngleY) * CAMERA_LERP;
+    cameraAngleX += (targetCameraX - cameraAngleX) * CAMERA_LERP;
     if (!timestamp) {
         requestAnimationFrame(render);
         return;
@@ -1001,16 +1029,20 @@ function render(timestamp) {
     const beatsPerSecond = songBPM / 60.0;
 
     const angleRad = SWING_DEGREES * Math.sin(animTimer * beatsPerSecond * Math.PI) * (Math.PI / 180.0);
-    jumpVal = Math.sin(animTimer * beatsPerSecond/2 * Math.PI)/200;
-
+    const jumpVal = (Math.sin(animTimer * beatsPerSecond * Math.PI) + 1.0) / 2.0;
+    const JUMP_HEIGHT = 0.15;  // tune this — world units
+    // Twist: runs at half the beat rate, swings ±45°
+    const TWIST_DEGREES = 45.0;
+    const twistRad = TWIST_DEGREES * Math.sin(animTimer * beatsPerSecond * Math.PI * 0.5) * (Math.PI / 180.0) * 0.25;
     for (const obj of crowdFront) {
         obj.crowdAngle = angleRad;
     }
     for (const obj of crowdBack) {
         obj.crowdAngle = -angleRad;
     }
-    for (const obj of scene){
-        obj.ty += jumpVal;
+    for (const obj of scene) {
+        obj.ty = obj.baseTy + jumpVal * JUMP_HEIGHT;
+        obj.figureTwist = twistRad;
     }
 
     // Upload the current video frame to the GPU if the video is playing.
