@@ -8,9 +8,10 @@ var uColorLoc;
 
 // -- Animation timer and values ---
 var animTimer = 0.0;
-var animSpeed = 0.0;
-var songBPM = 110;
-var glowstickRotate = -75;
+var lastTimestamp = 0.0;
+const SWING_DEGREES = 45.0;  // how far the stick swings each direction
+var songBPM = 196;
+var jumpVal;
 
 // --- Slider state ---
 var sArmRightAngle = 0.0;
@@ -76,12 +77,12 @@ function faceUV(x, y, w, h, imgW, imgH, { flipU = false, flipV = false } = {}) {
 
     
     return [
-        u0, v0,   // top-left
-        u1, v0,   // top-right
-        u1, v1,   // bottom-right
-        u1, v1,   // bottom-right  (start of tri 2)
-        u0, v1,   // bottom-left
-        u0, v0,   // top-left
+        vec2(u0, v0),   // top-left
+        vec2(u1, v0),   // top-right
+        vec2(u1, v1),   // bottom-right
+        vec2(u1, v1),   // bottom-right  (start of tri 2)
+        vec2(u0, v1),   // bottom-left
+        vec2(u0, v0),   // top-left
     ];
 }
 
@@ -145,6 +146,7 @@ function buildCubeUVs(faces, imgW, imgH) {
 //   [front, back, left, right, top, bottom]
 // ---------------------------------------------------------------------------
 const IMG_W = 64, IMG_H = 64;
+var figureLight = 0.9
 
 // Each entry in the scene now carries a 'uvs' Float32Array (36 UV pairs for
 // a cube, 18 for a pyramid) that will be uploaded to the GPU before its draw.
@@ -155,15 +157,16 @@ const scene = [
         lx: 0.0,  ly: 0.0,   lz: 0.0,
         rx: 0.0,  sx: 1,     sy: 1,    sz: 1,
         r: 1, g: 0, b: 0,
+        emissive: figureLight,
         // Face UV regions [front, back, left, right, top, bottom]
-        uvs: new Float32Array(buildCubeUVs([
+        uvs: buildCubeUVs([
             { x:  24, y:  8, w: 8, h: 8 },  // back
             { x: 8, y:  8, w: 8, h: 8, flipU: true },  // front
             { x:  0, y:  8, w: 8, h: 8 },  // left
             { x: 16, y:  8, w: 8, h: 8 },  // right
             { x:  8, y:  0, w: 8, h: 8, flipV: true },  // top
             { x: 16, y:  0, w: 8, h: 8 },  // bottom
-        ], IMG_W, IMG_H))
+        ], IMG_W, IMG_H)
     },
     {   // BODY
         shape: 'cube',
@@ -171,14 +174,15 @@ const scene = [
         lx: 0.0,  ly: 0.0,   lz: 0.0,
         rx: 0.0,  sx: 1,     sy: 1.5,  sz: 0.625,
         r: 0, g: 1, b: 0,
-        uvs: new Float32Array(buildCubeUVs([
+        emissive: figureLight,
+        uvs: buildCubeUVs([
             { x: 32, y: 20, w:  8, h: 12}, // back
             { x: 20, y: 20, w:  8, h: 12, flipU: true  }, // front
             { x: 16, y: 20, w:  4, h: 12 }, // left
             { x: 28, y: 20, w:  4, h: 12 }, // right
             { x: 20, y: 16, w:  8, h:  4 }, // top
             { x: 28, y: 16, w:  8, h:  4 }, // bottom
-        ], IMG_W, IMG_H))
+        ], IMG_W, IMG_H)
     },
     {   // RIGHT ARM
         shape: 'cube',
@@ -186,14 +190,15 @@ const scene = [
         lx: 0.0,    ly: 0.0,  lz: 0.0,
         rx: 0.0,    sx: 0.375, sy: 1.5, sz: 0.625,
         r: 0, g: 0, b: 1,
-        uvs: new Float32Array(buildCubeUVs([
+        emissive: figureLight,
+        uvs: buildCubeUVs([
             { x: 43, y:  52, w: 3, h: 12}, // front
             { x: 36, y:  52, w: 3, h: 12, flipU:true}, // back
             { x: 32, y:  52, w: 4, h: 12 }, // left  
             { x: 39, y:  52, w: 4, h: 12 }, // right 
             { x: 36, y:  48, w: 3, h:  4 }, // top
             { x: 39, y:  48, w: 3, h:  4 }, // bottom
-        ], IMG_W, IMG_H))
+        ], IMG_W, IMG_H)
     },
     {   // LEFT ARM
         shape: 'cube',
@@ -201,16 +206,17 @@ const scene = [
         lx: 0.0,    ly: 0.0,  lz: 0.0,
         rx: 0.0,    sx: 0.375, sy: 1.5, sz: 0.625,
         r: 0, g: 0, b: 1,
+        emissive: figureLight,
         // Left arm uses the same regions as right arm in a basic skin;
         // swap left/right faces to mirror if your atlas has separate left-arm tiles
-        uvs: new Float32Array(buildCubeUVs([
+        uvs: buildCubeUVs([
             { x: 51, y:  20, w: 3, h: 12 }, // front
             { x: 44, y:  20, w: 3, h: 12, flipU: true }, // back
             { x: 40, y:  20, w: 4, h: 12 }, // left
             { x: 47, y:  20, w: 4, h: 12 }, // right
             { x: 44, y:  16, w: 3, h:  4 }, // top
             { x: 47, y:  16, w: 3, h:  4 }, // bottom
-        ], IMG_W, IMG_H))
+        ], IMG_W, IMG_H)
     },
     {   // RIGHT LEG
         shape: 'cube',
@@ -218,14 +224,15 @@ const scene = [
         lx: 0.0,  ly:  0.0,  lz: 0.0,
         rx: 0.0,  sx: 0.5,   sy: 1.5,  sz: 0.625,
         r: 1, g: 1, b: 0,
-        uvs: new Float32Array(buildCubeUVs([
+        emissive: figureLight,
+        uvs: buildCubeUVs([
             { x:  28, y:  52, w: 4, h: 12 }, // back
             { x: 20, y:  52, w: 4, h: 12,flipU: true }, // front
             { x:  16, y:  52, w: 4, h: 12 }, // left
             { x:  24, y:  52, w: 4, h: 12 }, // right
             { x:  20, y:  48, w: 4, h:  4 }, // top
             { x:  24, y:  48, w: 4, h:  4 }, // bottom
-        ], IMG_W, IMG_H))
+        ], IMG_W, IMG_H)
     },
     {   // LEFT LEG
         shape: 'cube',
@@ -233,15 +240,16 @@ const scene = [
         lx:  0.0, ly:  0.0,  lz: 0.0,
         rx:  0.0, sx:  0.5,  sy: 1.5,  sz: 0.625,
         r: 1, g: 0, b: 1,
+        emissive: figureLight,
         // Mirror left/right faces for left leg
-        uvs: new Float32Array(buildCubeUVs([
+        uvs: buildCubeUVs([
             { x:  12, y:  20, w: 4, h: 12 }, // back
             { x: 4, y:  20, w: 4, h: 12, flipU: true }, // front
             { x:  0, y:  20, w: 4, h: 12 }, // left  (swapped)
             { x:  8, y:  20, w: 4, h: 12 }, // right (swapped)
             { x:  4, y:  16, w: 4, h:  4 }, // top
             { x:  8, y:  16, w: 4, h:  4 }, // bottom
-        ], IMG_W, IMG_H))
+        ], IMG_W, IMG_H)
     },
     {   // HEAD OVERLAY
     shape: 'cube',
@@ -251,15 +259,16 @@ const scene = [
     // Scale 5% larger on each axis so it wraps just outside the head
     sx: 1.1,  sy: 1.1,  sz: 1.1,
     r: 1, g: 0, b: 0,
+    emissive: figureLight,
     overlay: true,   // <-- drawn in pass 2
-    uvs: new Float32Array(buildCubeUVs([
+    uvs: buildCubeUVs([
         { x: 56, y:  8, w: 8, h: 8  },              // back
         { x: 40, y:  8, w: 8, h: 8,flipU: true },   // front
         { x: 32, y:  8, w: 8, h: 8 },               // left
         { x: 48, y:  8, w: 8, h: 8 },               // right
         { x: 40, y:  0, w: 8, h: 8, flipV: true },  // top
         { x: 48, y:  0, w: 8, h: 8},                // bottom
-    ], IMG_W, IMG_H))
+    ], IMG_W, IMG_H)
 },
 {   // BODY OVERLAY
         shape: 'cube',
@@ -267,15 +276,16 @@ const scene = [
         lx: 0.0,  ly: 0.0,   lz: 0.0,
         rx: 0.0,  sx: 1.1,  sy: 1.65,  sz: 0.688,
         r: 0, g: 1, b: 0,
+        emissive: figureLight,
         overlay: true, 
-        uvs: new Float32Array(buildCubeUVs([
+        uvs: buildCubeUVs([
             { x: 32, y: 36, w:  8, h: 12}, // back
             { x: 20, y: 36, w:  8, h: 12, flipU: true  }, // front
             { x: 16, y: 36, w:  4, h: 12 }, // left
             { x: 28, y: 36, w:  4, h: 12 }, // right
             { x: 20, y: 32, w:  8, h:  4 }, // top
             { x: 28, y: 32, w:  8, h:  4 }, // bottom
-        ], IMG_W, IMG_H))
+        ], IMG_W, IMG_H)
     },
 {   // RIGHT ARM OVERLAY
         shape: 'cube',
@@ -283,15 +293,16 @@ const scene = [
         lx: 0.0,    ly: 0.0,  lz: 0.0,
         rx: 0.0,    sx: 0.412, sy: 1.65, sz: 0.688,
         r: 0, g: 0, b: 1,
+        emissive: figureLight,
         overlay: true,
-        uvs: new Float32Array(buildCubeUVs([
+        uvs: buildCubeUVs([
             { x: 59, y:  52, w: 3, h: 12, }, // back
             { x: 52, y:  52, w: 3, h: 12, flipU: true}, // front
             { x: 46, y:  52, w: 4, h: 12 }, // left  
             { x: 55, y:  52, w: 4, h: 12 }, // right 
             { x: 50, y:  48, w: 3, h:  4 }, // top
             { x: 54, y:  48, w: 3, h:  4 }, // bottom
-        ], IMG_W, IMG_H))
+        ], IMG_W, IMG_H)
     },
     {   // LEFT ARM OVERLAY
         shape: 'cube',
@@ -299,17 +310,18 @@ const scene = [
         lx: 0.0,    ly: 0.0,  lz: 0.0,
         rx: 0.0,    sx: 0.412, sy: 1.65, sz: 0.688,
         r: 0, g: 0, b: 1,
+        emissive: figureLight,
         overlay: true,
         // Left arm uses the same regions as right arm in a basic skin;
         // swap left/right faces to mirror if your atlas has separate left-arm tiles
-        uvs: new Float32Array(buildCubeUVs([
+        uvs: buildCubeUVs([
             { x: 51, y:  36, w: 3, h: 12,  }, // back
             { x: 44, y:  36, w: 3, h: 12, flipU: true }, // front
             { x: 40, y:  36, w: 4, h: 12 }, // left
             { x: 47, y:  36, w: 4, h: 12 }, // right
             { x: 44, y:  32, w: 3, h:  4 }, // top
             { x: 47, y:  32, w: 3, h:  4 }, // bottom
-        ], IMG_W, IMG_H))
+        ], IMG_W, IMG_H)
     },
     {   // RIGHT LEG OVERLAY
         shape: 'cube',
@@ -317,32 +329,34 @@ const scene = [
         lx: 0.0,  ly:  0.0,  lz: 0.0,
         rx: 0.0,  sx: 0.55,   sy: 1.65,  sz: 0.688,
         r: 1, g: 1, b: 0,
+        emissive: figureLight,
         overlay: true,
-        uvs: new Float32Array(buildCubeUVs([
+        uvs: buildCubeUVs([
             { x:  12, y:  52, w: 4, h: 12 }, // back
             { x: 4, y:  52, w: 4, h: 12,flipU: true }, // front
             { x:  0, y:  52, w: 4, h: 12 }, // left
             { x:  8, y:  52, w: 4, h: 12 }, // right
             { x:  4, y:  48, w: 4, h:  4 }, // top
             { x:  8, y:  48, w: 4, h:  4 }, // bottom
-        ], IMG_W, IMG_H))
+        ], IMG_W, IMG_H)
     },
      {   // LEFT LEG OVERLAY
         shape: 'cube',
         tx: -cubeSize*0.5, ty: -cubeSize*3,  tz: 0.0,
         lx:  0.0, ly:  0.0,  lz: 0.0,
         rx: 0.0,  sx: 0.55,   sy: 1.65,  sz: 0.688,
-        r: 1, g: 0, b: 1,
+        r: 1, g: 0, b: 1, 
+        emissive: figureLight,
         overlay: true,
         // Mirror left/right faces for left leg
-        uvs: new Float32Array(buildCubeUVs([
+        uvs: buildCubeUVs([
             { x:  12, y:  36, w: 4, h: 12 }, // back
             { x: 4, y:  36, w: 4, h: 12, flipU: true }, // front
             { x:  0, y:  36, w: 4, h: 12 }, // left  (swapped)
             { x:  8, y:  36, w: 4, h: 12 }, // right (swapped)
             { x:  4, y:  32, w: 4, h:  4 }, // top
             { x:  8, y:  32, w: 4, h:  4 }, // bottom
-        ], IMG_W, IMG_H))
+        ], IMG_W, IMG_H)
     },
 
 ];
@@ -368,16 +382,18 @@ const stage = [
         lx: 0.0,  ly: 0.0,   lz: 0.0,
         rx: 0.0,  sx: 8,     sy: 4.5,    sz: 0.5,
         r: 1, g: 0, b: 0,
-        useVideo: true,   // <-- signals drawObject to swap textures
+        useVideo: true, 
+        emissive: 1.0, 
+          // <-- signals drawObject to swap textures
         // Give it UVs covering the whole texture so the full video frame maps on
-        uvs: new Float32Array(buildCubeUVs([
+        uvs: buildCubeUVs([
             { x: 0, y: 0, w: 64, h: 64 },  // front  — full frame
             { x: 0, y: 0, w: 64, h: 64,  flipU: true },  // back
             { x: 0, y: 0, w: 64, h: 64 },  // left
             { x: 0, y: 0, w: 64, h: 64 },  // right
             { x: 0, y: 0, w: 64, h: 64 },  // top
             { x: 0, y: 0, w: 64, h: 64 },  // bottom
-        ], 64, 64)),
+        ], 64, 64),
     },
 
 ];
@@ -385,40 +401,46 @@ const stage = [
 const crowdFront = [];
 for (let i = 0; i < 6; i++){
     x = -0.8 + i * 0.4;
+    const pivotY = -0.95;   // shared pivot point in world space
+    const pivotZ = -0.4;
     crowdFront.push(
         {//Arm
             shape: 'cube',
-            tx: x,   ty: -0.95,   tz: -0.4,
-            lx: 0.0, ly: 0.0,  lz: 0.0,
-            rx: glowstickRotate, sx: 0.75, sy: 1.5, sz: 0.75,
-            r: 1, g: 0, b: 0,
+            tx: x,   ty: pivotY,   tz: pivotZ,
+            lx: 0.0, ly: 0,  lz: 0.0,
+            rx: 0.0, sx: 0.75, sy: 1.5, sz: 0.75,
+            r: 0.4, g: 0.4, b: 0.4,
         },
         {//Glowstick
             shape: 'cube',
-            tx: x,   ty: -0.75,  tz: -0.4,
-            lx: 0.0, ly: 0.0,  lz: 0.0,
-            rx: glowstickRotate, sx: 0.5, sy:3, sz: 0.5,
-            r: 0, g: 1, b: 0.4,
+            tx: x,   ty: pivotY,  tz: pivotZ,
+            lx: 0.0, ly: 0.25,  lz: 0.0,
+            rx: 0.0, sx: 0.5, sy:3, sz: 0.5,
+            r: 1, g: 0, b: 0.4,
+            emissive: 1.0,
         }
     )
 }
 const crowdBack = [];
 for (let i = 0; i < 5; i++) {
     x = -0.8 + i * 0.4;
+    const pivotY = -0.95;   // shared pivot point in world space
+    const pivotZ = -0.9;
     crowdBack.push(
         { //Arm
             shape: 'cube',
-            tx: x,   ty: -0.95,   tz: -0.9,
+            tx: x,   ty: pivotY,   tz: pivotZ,
             lx: 0.0, ly: 0.0,  lz: 0.0,
-            rx: glowstickRotate, sx: 0.75, sy: 1.5, sz: 0.75,
-            r: 1, g: 0, b: 0,
+            rx: 0.0, sx: 0.75, sy: 1.5, sz: 0.75,
+            r: 0.75, g: 0.75, b: 0.75,
         },
         { //Glowstick
             shape: 'cube',
-            tx: x,   ty: -0.75,  tz: -0.9,
-            lx: 0.0, ly: 0.0,  lz: 0.0,
-            rx: glowstickRotate, sx: 0.5, sy: 3, sz: 0.5,
-            r: 0.4, g: 0, b: 1,
+            tx: x,   ty: pivotY,  tz: pivotZ,
+            lx: 0.0, ly: 0.25,  lz: 0.0,
+            rx: 0.0, sx: 0.5, sy: 3, sz: 0.5,
+            r: 1, g: 0, b: 0,
+            emissive: 1.0,
         }
     );
 }
@@ -583,80 +605,125 @@ window.onload = function init() {
     program = initShaders(gl, "vertex-shader", "fragment-shader");
     gl.useProgram(program);
 
+    // --- Normal buffer (one outward-facing normal per vertex) ---
+    const normals = flatten([
+        // CUBE normals (36 vertices, 6 faces × 6 verts)
+        // Front  (+Z)
+        vec3(0,0,1), vec3(0,0,1), vec3(0,0,1),
+        vec3(0,0,1), vec3(0,0,1), vec3(0,0,1),
+        // Back   (-Z)
+        vec3(0,0,-1), vec3(0,0,-1), vec3(0,0,-1),
+        vec3(0,0,-1), vec3(0,0,-1), vec3(0,0,-1),
+        // Left   (-X)
+        vec3(-1,0,0), vec3(-1,0,0), vec3(-1,0,0),
+        vec3(-1,0,0), vec3(-1,0,0), vec3(-1,0,0),
+        // Right  (+X)
+        vec3(1,0,0), vec3(1,0,0), vec3(1,0,0),
+        vec3(1,0,0), vec3(1,0,0), vec3(1,0,0),
+        // Top    (+Y)
+        vec3(0,1,0), vec3(0,1,0), vec3(0,1,0),
+        vec3(0,1,0), vec3(0,1,0), vec3(0,1,0),
+        // Bottom (-Y)
+        vec3(0,-1,0), vec3(0,-1,0), vec3(0,-1,0),
+        vec3(0,-1,0), vec3(0,-1,0), vec3(0,-1,0),
+
+        // PYRAMID normals (18 vertices — approximate face normals)
+        // Front tri
+        vec3(0,0.447,0.894), vec3(0,0.447,0.894), vec3(0,0.447,0.894),
+        // Left tri
+        vec3(-0.894,0.447,0), vec3(-0.894,0.447,0), vec3(-0.894,0.447,0),
+        // Right tri
+        vec3(0.894,0.447,0), vec3(0.894,0.447,0), vec3(0.894,0.447,0),
+        // Back tri
+        vec3(0,0.447,-0.894), vec3(0,0.447,-0.894), vec3(0,0.447,-0.894),
+        // Base tri 1
+        vec3(0,-1,0), vec3(0,-1,0), vec3(0,-1,0),
+        // Base tri 2
+        vec3(0,-1,0), vec3(0,-1,0), vec3(0,-1,0),
+    ]);
+
+    var normalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
+
+    var aNormal = gl.getAttribLocation(program, "aNormal");
+    gl.vertexAttribPointer(aNormal, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(aNormal);
+
     // --- Vertex position buffer (unchanged geometry) ---
-    var points = new Float32Array([
+    var points = flatten([
         // --- CUBE (36 vertices) ---
         // Front face
-         cubeSize,  cubeSize,  cubeSize, 1,
-        -cubeSize,  cubeSize,  cubeSize, 1,
-        -cubeSize, -cubeSize,  cubeSize, 1,
-        -cubeSize, -cubeSize,  cubeSize, 1,
-         cubeSize, -cubeSize,  cubeSize, 1,
-         cubeSize,  cubeSize,  cubeSize, 1,
+         vec4( cubeSize,  cubeSize,  cubeSize, 1),
+        vec4(-cubeSize,  cubeSize,  cubeSize, 1),
+        vec4(-cubeSize, -cubeSize,  cubeSize, 1),
+        vec4(-cubeSize, -cubeSize,  cubeSize, 1),
+        vec4( cubeSize, -cubeSize,  cubeSize, 1),
+        vec4( cubeSize,  cubeSize,  cubeSize, 1),
         // Back face
-         cubeSize,  cubeSize, -cubeSize, 1,
-        -cubeSize,  cubeSize, -cubeSize, 1,
-        -cubeSize, -cubeSize, -cubeSize, 1,
-        -cubeSize, -cubeSize, -cubeSize, 1,
-         cubeSize, -cubeSize, -cubeSize, 1,
-         cubeSize,  cubeSize, -cubeSize, 1,
+        vec4( cubeSize,  cubeSize, -cubeSize, 1),
+        vec4(-cubeSize,  cubeSize, -cubeSize, 1),
+        vec4(-cubeSize, -cubeSize, -cubeSize, 1),
+        vec4(-cubeSize, -cubeSize, -cubeSize, 1),
+        vec4( cubeSize, -cubeSize, -cubeSize, 1),
+        vec4( cubeSize,  cubeSize, -cubeSize, 1),
         // Left face  (-x side, so "right" in UV space = +z, "left" = -z)
-        -cubeSize,  cubeSize,  cubeSize, 1,   // top-front    → top-right of face
-        -cubeSize,  cubeSize, -cubeSize, 1,   // top-back     → top-left
-        -cubeSize, -cubeSize, -cubeSize, 1,   // bottom-back  → bottom-left
-        -cubeSize, -cubeSize, -cubeSize, 1,   // bottom-back  → bottom-left  (tri 2)
-        -cubeSize, -cubeSize,  cubeSize, 1,   // bottom-front → bottom-right
-        -cubeSize,  cubeSize,  cubeSize, 1,   // top-front    → top-right
+        vec4(-cubeSize,  cubeSize,  cubeSize, 1),   // top-front    → top-right of face
+        vec4(-cubeSize,  cubeSize, -cubeSize, 1),   // top-back     → top-left
+        vec4(-cubeSize, -cubeSize, -cubeSize, 1),   // bottom-back  → bottom-left
+        vec4(-cubeSize, -cubeSize, -cubeSize, 1),   // bottom-back  → bottom-left  (tri 2)
+        vec4(-cubeSize, -cubeSize,  cubeSize, 1),   // bottom-front → bottom-right
+        vec4(-cubeSize,  cubeSize,  cubeSize, 1),   // top-front    → top-right
 
         // Right face (+x side)
-        cubeSize,  cubeSize, -cubeSize, 1,   // top-back     → top-right of face
-        cubeSize,  cubeSize,  cubeSize, 1,   // top-front    → top-left
-        cubeSize, -cubeSize,  cubeSize, 1,   // bottom-front → bottom-left
-        cubeSize, -cubeSize,  cubeSize, 1,   // bottom-front → bottom-left  (tri 2)
-        cubeSize, -cubeSize, -cubeSize, 1,   // bottom-back  → bottom-right
-        cubeSize,  cubeSize, -cubeSize, 1,   // top-back     → top-right
+        vec4(cubeSize,  cubeSize, -cubeSize, 1),   // top-back     → top-right of face
+        vec4(cubeSize,  cubeSize,  cubeSize, 1),   // top-front    → top-left
+        vec4(cubeSize, -cubeSize,  cubeSize, 1),   // bottom-front → bottom-left
+        vec4(cubeSize, -cubeSize,  cubeSize, 1),   // bottom-front → bottom-left  (tri 2)
+        vec4(cubeSize, -cubeSize, -cubeSize, 1),   // bottom-back  → bottom-right
+        vec4(cubeSize,  cubeSize, -cubeSize, 1),   // top-back     → top-right
 
         // Top face (+y side, "right" in UV space = +x, "down" = -z)
-        -cubeSize,  cubeSize, -cubeSize, 1,   // back-left    → top-left
-        cubeSize,  cubeSize, -cubeSize, 1,   // back-right   → top-right
-        cubeSize,  cubeSize,  cubeSize, 1,   // front-right  → bottom-right
-        cubeSize,  cubeSize,  cubeSize, 1,   // front-right  → bottom-right (tri 2)
-        -cubeSize,  cubeSize,  cubeSize, 1,   // front-left   → bottom-left
-        -cubeSize,  cubeSize, -cubeSize, 1,   // back-left    → top-left
+        vec4(-cubeSize,  cubeSize, -cubeSize, 1),   // back-left    → top-left
+        vec4( cubeSize,  cubeSize, -cubeSize, 1),   // back-right   → top-right
+        vec4( cubeSize,  cubeSize,  cubeSize, 1),   // front-right  → bottom-right
+        vec4( cubeSize,  cubeSize,  cubeSize, 1),   // front-right  → bottom-right (tri 2)
+        vec4(-cubeSize,  cubeSize,  cubeSize, 1),   // front-left   → bottom-left
+        vec4(-cubeSize,  cubeSize, -cubeSize, 1),   // back-left    → top-left
 
         // Bottom face (-y side)
-        -cubeSize, -cubeSize,  cubeSize, 1,   // front-left   → top-left
-        cubeSize, -cubeSize,  cubeSize, 1,   // front-right  → top-right
-        cubeSize, -cubeSize, -cubeSize, 1,   // back-right   → bottom-right
-        cubeSize, -cubeSize, -cubeSize, 1,   // back-right   → bottom-right (tri 2)
-        -cubeSize, -cubeSize, -cubeSize, 1,   // back-left    → bottom-left
-        -cubeSize, -cubeSize,  cubeSize, 1,   // front-left   → top-left
+        vec4(-cubeSize, -cubeSize,  cubeSize, 1),   // front-left   → top-left
+        vec4( cubeSize, -cubeSize,  cubeSize, 1),   // front-right  → top-right
+        vec4( cubeSize, -cubeSize, -cubeSize, 1),   // back-right   → bottom-right
+        vec4( cubeSize, -cubeSize, -cubeSize, 1),   // back-right   → bottom-right (tri 2)
+        vec4(-cubeSize, -cubeSize, -cubeSize, 1),   // back-left    → bottom-left
+        vec4(-cubeSize, -cubeSize,  cubeSize, 1),   // front-left   → top-left
 
         // --- PYRAMID (18 vertices) ---
         // Front triangle
-         0.0,  cubeSize,  0.0,      1,
-        -cubeSize, -cubeSize,  cubeSize, 1,
-         cubeSize, -cubeSize,  cubeSize, 1,
+        vec4( 0.0,  cubeSize,  0.0,      1),
+        vec4(-cubeSize, -cubeSize,  cubeSize, 1),
+        vec4( cubeSize, -cubeSize,  cubeSize, 1),
         // Left triangle
-         0.0,  cubeSize,  0.0,      1,
-        -cubeSize, -cubeSize,  cubeSize, 1,
-        -cubeSize, -cubeSize, -cubeSize, 1,
+        vec4( 0.0,  cubeSize,  0.0,      1),
+        vec4(-cubeSize, -cubeSize,  cubeSize, 1),
+        vec4(-cubeSize, -cubeSize, -cubeSize, 1),
         // Right triangle
-         0.0,  cubeSize,  0.0,      1,
-         cubeSize, -cubeSize,  cubeSize, 1,
-         cubeSize, -cubeSize, -cubeSize, 1,
+        vec4( 0.0,  cubeSize,  0.0,      1),
+        vec4( cubeSize, -cubeSize,  cubeSize, 1),
+        vec4( cubeSize, -cubeSize, -cubeSize, 1),
         // Back triangle
-         0.0,  cubeSize,  0.0,      1,
-        -cubeSize, -cubeSize, -cubeSize, 1,
-         cubeSize, -cubeSize, -cubeSize, 1,
+        vec4( 0.0,  cubeSize,  0.0,      1),
+        vec4(-cubeSize, -cubeSize, -cubeSize, 1),
+        vec4( cubeSize, -cubeSize, -cubeSize, 1),
         // Base triangle 1
-         cubeSize, -cubeSize,  cubeSize, 1,
-        -cubeSize, -cubeSize,  cubeSize, 1,
-        -cubeSize, -cubeSize, -cubeSize, 1,
+        vec4( cubeSize, -cubeSize,  cubeSize, 1),
+        vec4(-cubeSize, -cubeSize,  cubeSize, 1),
+        vec4(-cubeSize, -cubeSize, -cubeSize, 1),
         // Base triangle 2
-         cubeSize, -cubeSize, -cubeSize, 1,
-        -cubeSize, -cubeSize, -cubeSize, 1,
-         cubeSize, -cubeSize,  cubeSize, 1,
+        vec4( cubeSize, -cubeSize, -cubeSize, 1),
+        vec4(-cubeSize, -cubeSize, -cubeSize, 1),
+        vec4( cubeSize, -cubeSize,  cubeSize, 1),
     ]);
 
     var pointsBuffer = gl.createBuffer();
@@ -706,6 +773,8 @@ window.onload = function init() {
     uLocalZLoc = gl.getUniformLocation(program, "uLocalZ");
     uColorLoc  = gl.getUniformLocation(program, "uColor");
     uLedModeLoc = gl.getUniformLocation(program, "uLedMode");
+    var uEmissiveLoc = gl.getUniformLocation(program, "uEmissive");
+    window.uEmissiveLoc = uEmissiveLoc;  // make accessible to drawObject
 
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0.5, 0.5, 0.5, 1.0);
@@ -714,7 +783,7 @@ window.onload = function init() {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     // --- Texture setup (done ONCE here, not per frame) ---
-    texture = loadTexture(gl, len);
+    texture = loadTexture(gl, kaito);
     window.texture = texture;  
     const uTextureLoc = gl.getUniformLocation(program, "u_texture");
     // Activate texture unit 0 and bind our texture to it.
@@ -755,7 +824,10 @@ window.onload = function init() {
     window.addEventListener('keydown', startVideo);
 
     
-
+    for (const obj of scene){
+        obj.ty -= 0.175;
+        obj.tz -= -0.4
+    }
     render();
 };
 
@@ -767,7 +839,7 @@ function drawObject(obj) {
     // --- Handle objects with no UV data (flat-color stage pieces) ---
     if (obj.uvs) {
         gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, obj.uvs, gl.DYNAMIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, flatten(obj.uvs), gl.DYNAMIC_DRAW);
         gl.vertexAttribPointer(texcoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
     }
 
@@ -781,7 +853,7 @@ function drawObject(obj) {
     if (obj.armAngle === 'left')  angleX = sArmLeftAngle;
 
     // Guard against missing rx — default to 0 if not set
-    gl.uniform1f(uAngleZLoc, obj.rx ?? 0.0);
+    gl.uniform1f(uAngleZLoc, (obj.crowdAngle ?? 0.0) + (obj.rx ?? 0.0));
     gl.uniform1f(uAngleXLoc, angleX + sDragX);
     gl.uniform1f(uAngleYLoc, sDragY);
     gl.uniform1f(uDeltaXLoc, obj.tx + parseFloat(sDeltaX));
@@ -796,6 +868,7 @@ function drawObject(obj) {
     gl.uniform4f(uColorLoc,  obj.r, obj.g, obj.b, 1.0);
     gl.uniform1f(uUseTextureLoc, obj.uvs ? 1.0 : 0.0);
     gl.uniform1f(uLedModeLoc, obj.useVideo ? 1.0 : 0.0);
+    gl.uniform1f(window.uEmissiveLoc, obj.emissive ?? 0.0);
 
     if (obj.shape === 'cube') {
         gl.drawArrays(gl.TRIANGLES, CUBE_FIRST, CUBE_COUNT);
@@ -809,16 +882,29 @@ function drawObject(obj) {
 }
 
 function render(timestamp) {
-    animSpeed = songBPM/60;
-    if (animTimer <= animSpeed){
-        glowstickRotate += 145/(songBPM/60);
+    if (!timestamp) {
+        requestAnimationFrame(render);
+        return;
     }
-    else if(animSpeed<animTimer<=animSpeed*2){
-        glowstickRotate -= 145/(songBPM/60)
+     // --- Glowstick animation ---
+    const dt = (timestamp - lastTimestamp) / 1000.0;  // seconds since last frame
+    lastTimestamp = timestamp;
+    animTimer += dt;
 
+    // One full back-and-forth per beat
+    const beatsPerSecond = songBPM / 60.0;
+
+    const angleRad = SWING_DEGREES * Math.sin(animTimer * beatsPerSecond * Math.PI) * (Math.PI / 180.0);
+    jumpVal = Math.sin(animTimer * beatsPerSecond/2 * Math.PI)/200;
+
+    for (const obj of crowdFront) {
+        obj.crowdAngle = angleRad;
     }
-    else{
-        animTimer = 0;
+    for (const obj of crowdBack) {
+        obj.crowdAngle = -angleRad;
+    }
+    for (const obj of scene){
+        obj.ty += jumpVal;
     }
 
     // Upload the current video frame to the GPU if the video is playing.

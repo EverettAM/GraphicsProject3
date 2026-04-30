@@ -4,15 +4,12 @@
 #version 300 es
 
 in vec4 aPosition;
-in vec4 aVertex;
+in vec3 aNormal;          // NEW: per-vertex normal
 in vec2 aTexCoord0;
-uniform mat4 ModelViewProjectionMatrix;
-
-out vec2 vST;
 
 uniform float uAngleZ;
 uniform float uAngleX;
-uniform float uAngleY;   // NEW: y-axis rotation for turntable drag
+uniform float uAngleY;
 uniform float uDeltaX;
 uniform float uDeltaY;
 uniform float uDeltaZ;
@@ -23,9 +20,12 @@ uniform float uLocalX;
 uniform float uLocalY;
 uniform float uLocalZ;
 
+out vec2 vST;
+out vec3 vNormal;         // NEW: world-space normal for fragment shader
+out vec3 vWorldPos;       // NEW: world-space position for fragment shader
+
 void main()
 {
-    // Y-axis rotation matrix for turntable drag
     mat4 ry = mat4(
         cos(uAngleY),  0.0, sin(uAngleY), 0.0,
         0.0,           1.0, 0.0,          0.0,
@@ -62,10 +62,16 @@ void main()
         0.0, 0.0, 1.0, 0.0,
         uLocalX, uLocalY, uLocalZ, 1.0);
 
-    // ry applied outermost so drag rotation wraps all per-object transforms
-    gl_Position = ry * rx *txyz *  rz * local * sxyz * aPosition;
+    mat4 modelMatrix = ry * txyz * rx * rz * local * sxyz;
+
+    gl_Position = modelMatrix * aPosition;
     gl_PointSize = 10.0;
     vST = aTexCoord0.st;
+
+    // Rotation-only matrix for normals (no scale, no translate)
+    mat3 normalMatrix = mat3(ry * rx * rz);
+    vNormal   = normalize(normalMatrix * aNormal);
+    vWorldPos = (modelMatrix * aPosition).xyz;
 }
 </script>
 
@@ -73,49 +79,116 @@ void main()
 #version 300 es
 
 precision mediump float;
+
 uniform float uUseTexture;
 uniform float uLedMode;
-uniform vec4 uColor;
+uniform vec4  uColor;
+uniform float uEmissive;      // NEW: 0=no glow, 0.15=figure ambient, 1=full glow
 
 in vec2 vST;
+in vec3 vNormal;
+in vec3 vWorldPos;
+
 uniform sampler2D u_texture;
 out vec4 outColor;
 
+// --- Light definition (a single point light above and in front of the stage) ---
+const vec3 uLightPos   = vec3(0.0, 3.0, 2.0);
+const vec3 uLightColor = vec3(1.0, 1.0, 1.0);
+const vec3 uViewPos    = vec3(0.0, 0.0, 3.0);  // approximate camera position
+
+// Phong coefficients
+const float kAmbient  = 0.15;
+const float kDiffuse  = 0.65;
+const float kSpecular = 0.20;
+const float shininess = 16.0;
+
+vec3 phong(vec3 baseColor, vec3 N) {
+    vec3 L = normalize(uLightPos - vWorldPos);
+    vec3 V = normalize(uViewPos  - vWorldPos);
+    vec3 R = reflect(-L, N);
+
+    float diff = max(dot(N, L), 0.0);
+    float spec = pow(max(dot(R, V), 0.0), shininess);
+
+    vec3 ambient  = kAmbient  * baseColor;
+    vec3 diffuse  = kDiffuse  * diff * baseColor * uLightColor;
+    vec3 specular = kSpecular * spec * uLightColor;
+
+    return ambient + diffuse + specular;
+}
+
+// In the fragment shader, add a second light:
+    const vec3 uGlowLightPos   = vec3(0.15, -0.5, -0.3);  // approx glowstick world pos
+    const vec3 uGlowLightColor = vec3(1.0, 0, 0);     // green, matching front glowsticks
+    const float kGlowStrength  = 0.15;
+
+    vec3 phongWithGlow(vec3 baseColor, vec3 N) {
+        vec3 result = phong(baseColor, N);  // main light
+
+        // Secondary glow light (no specular, very soft)
+        vec3 Lg = normalize(uGlowLightPos - vWorldPos);
+        float diffG = max(dot(N, Lg), 0.0) * kGlowStrength;
+        result += diffG * baseColor * uGlowLightColor;
+
+        return result;
+    }
+
 void main()
 {
-    if (uUseTexture > 0.5){
+    vec3 N = normalize(vNormal);
+
+    // --- Resolve base color (texture or flat) ---
+    vec4 baseColor;
+    if (uUseTexture > 0.5) {
         vec4 texColor = texture(u_texture, vST);
-
-        if (uLedMode > 0.5) { //Checks if it is the screen; if so, it adds the LED screen texture overlay
+        if (uLedMode > 0.5) {
+            // LED screen dot overlay (unchanged from original)
             vec2 ledGrid = vec2(72.0, 54.0);
-            vec2 cellUV = fract(vST * ledGrid) - 0.5;
-            float dist = length(cellUV);
+            vec2 cellUV  = fract(vST * ledGrid) - 0.5;
+            float dist   = length(cellUV);
             float ledDot = 1.0 - smoothstep(0.18, 0.48, dist);
-
-            vec2 band = abs(cellUV);
-            float seam = smoothstep(0.42, 0.5, max(band.x, band.y));
-
+            vec2 band    = abs(cellUV);
+            float seam   = smoothstep(0.42, 0.5, max(band.x, band.y));
             vec3 ledColor = texColor.rgb * (0.18 + 1.2 * ledDot);
             ledColor *= (1.0 - 0.18 * seam);
             ledColor += texColor.rgb * 0.08;
-
-            outColor = vec4(min(ledColor, 1.0), texColor.a);
+            baseColor = vec4(min(ledColor, 1.0), texColor.a);
         } else {
-            outColor = texColor;
+            baseColor = texColor;
         }
+    } else {
+        baseColor = uColor;
     }
-    else {
-        outColor = uColor;
+
+    // --- Emissive objects ---
+    // uEmissive == 1.0  → pure emissive, skip Phong (glowstick tube, screen back face)
+    // uEmissive == 0.15 → mix 15% emissive into Phong result (figure)
+    // uEmissive == 0.0  → standard Phong only
+
+    if (uEmissive > 0.9 && gl_FrontFacing) {
+    // Back face glow — works for both LED and solid color
+    outColor = vec4(baseColor.rgb * 1.4, baseColor.a);
+    } else if (uLedMode > 0.5) {
+        // Front face LED overlay with Phong
+        outColor = vec4(phong(baseColor.rgb, N), baseColor.a);
+    } else if (uEmissive > 0.9) {
+        // Glowstick (front face, fully emissive)
+        outColor = vec4(baseColor.rgb * 1.2, baseColor.a);
+    } else {
+        // Standard Phong + figure ambient glow
+        vec3 lit = phongWithGlow(baseColor.rgb, N);
+        outColor = vec4(min(lit + baseColor.rgb * uEmissive * 0.5, 1.0), baseColor.a);
     }
-    
 }
 </script>
-<video id="led-video" src="https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/superhero.mp4"
+<video id="led-video" src="https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/rainysnowdrop.mp4"
        crossorigin = "anonymous"
        loop autoplay playsinline
        style="display:none"></video>
 <canvas id="gl-canvas" width="512" height="512"></canvas>
 <script src="initShaders.js"></script>
+<!-- MVnew.js provides vec2/vec4/flatten helpers used by lenrender.js -->
 <script src="MVnew.js"></script>
 
 <script src="lenrender.js"></script>
