@@ -4,7 +4,7 @@
 #version 300 es
 
 in vec4 aPosition;
-in vec3 aNormal;          // NEW: per-vertex normal
+in vec3 aNormal;          
 in vec2 aTexCoord0;
 
 uniform float uAngleZ;
@@ -26,8 +26,8 @@ uniform float uCameraScale;
 
 
 out vec2 vST;
-out vec3 vNormal;         // NEW: world-space normal for fragment shader
-out vec3 vWorldPos;       // NEW: world-space position for fragment shader
+out vec3 vNormal;        
+out vec3 vWorldPos;      
 
 void main()
 {
@@ -199,23 +199,16 @@ void main()
     }
 }
 </script>
-<video id="led-video" src="https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/connectcommune.mp4"
+    // Loads Miku's video first (since she is the default option)
+<video id="led-video" src="https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/connectcommune.mp4" 
        crossorigin = "anonymous"
        loop autoplay playsinline
        style="display:none"></video>
 <canvas id="gl-canvas" width="800" height="800"></canvas>
 <script src="initShaders.js"></script>
-<!-- MVnew.js provides vec2/vec4/flatten helpers used by lenrender.js -->
 <script src="MVnew.js"></script>
 
 <script src="CG_S26_Program3_EverettAva.js"></script>
-
-<!-- <div>Delta along X-Axis  <input id="DeltaX"  type="range" min="-1.5" max="1.5" step="0.1" value="0"/></div> -->
-<!-- <div>Delta along Y-Axis  <input id="DeltaY"  type="range" min="-1.5" max="1.5" step="0.1" value="0"/></div> -->
-<!-- <div>Right Arm           <input id="ArmRight" type="range" min="0" max="180" step="1" value="0"/></div> -->
-<!-- <div>Left Arm            <input id="ArmLeft"  type="range" min="0" max="180" step="1" value="0"/></div> -->
-<!-- Reset button returns drag rotation to front-facing (0,0) -->
-<!-- <div><button id="Reset">Reset View</button> <span style="font-size:0.85em;color:#555">— or drag the canvas to rotate</span></div> -->
 <div>
     <button id="VocaloidPrev">◀ Prev</button>
     <span id="VocaloidName" style="display:inline-block; width:60px; text-align:center">Miku</span>

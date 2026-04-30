@@ -20,20 +20,6 @@ var cameraAngleX  = 0.0;   // current X tilt
 var targetCameraY = 0.0;
 var targetCameraX = 0.0;
 const CAMERA_LERP = 0.08;  // lower = slower/smoother
-// --- Slider state ---
-// var sArmRightAngle = 0.0;
-// var sArmLeftAngle  = 0.0;
-// var sDeltaX = 0.0;
-// var sDeltaY = 0.0;
-
-// --- Drag rotation state ---
-// sDragX/Y accumulate total rotation from mouse/touch dragging.
-// dragActive, lastX/Y track the in-progress drag.
-// var sDragY = 0.0;   // y-axis rotation (left/right drag) in radians
-// var sDragX = 0.0;   // x-axis rotation (up/down drag) in radians
-// var dragActive = false;
-// var lastMouseX = 0;
-// var lastMouseY = 0;
 
 const CUBE_FIRST    = 0;
 const CUBE_COUNT    = 36;
@@ -206,49 +192,11 @@ function buildCubeUVs(faces, imgW, imgH) {
     return uvs;
 }
 // ---------------------------------------------------------------------------
-// TEXTURE ATLAS LAYOUT  (edit these values to match your actual image)
-//
-// This example assumes a 64×64 Minecraft-style skin laid out like:
-//
-//   Head faces  (top row of atlas):
-//     top    :  8, 0, 8, 8
-//     bottom : 16, 0, 8, 8
-//     right  :  0, 8, 8, 8
-//     front  :  8, 8, 8, 8
-//     left   : 16, 8, 8, 8
-//     back   : 24, 8, 8, 8
-//
-//   Body faces  (second row):
-//     top    : 20, 16,  8,  4
-//     bottom : 28, 16,  8,  4
-//     right  : 16, 20,  4, 12
-//     front  : 20, 20,  8, 12
-//     left   : 28, 20,  4, 12
-//     back   : 32, 20,  8, 12
-//
-//   Arm faces   (third row, right arm — mirror UVs for left arm if needed):
-//     top    : 44,  0,  4,  4
-//     bottom : 48,  0,  4,  4
-//     right  : 40,  4,  4, 12
-//     front  : 44,  4,  4, 12
-//     left   : 48,  4,  4, 12
-//     back   : 52,  4,  4, 12
-//
-//   Leg faces   (fourth row, right leg):
-//     top    :  4,  0,  4,  4
-//     bottom :  8,  0,  4,  4
-//     right  :  0,  4,  4, 12
-//     front  :  4,  4,  4, 12
-//     left   :  8,  4,  4, 12
-//     back   : 12,  4,  4, 12
-//
-// The face order in each array below must match the vertex buffer order:
-//   [front, back, left, right, top, bottom]
-// ---------------------------------------------------------------------------
+
 const IMG_W = 64, IMG_H = 64;
 var figureLight = 0.9
 
-// Each entry in the scene now carries a 'uvs' Float32Array (36 UV pairs for
+// Each entry in the scene carries a 'uvs' Float32Array (36 UV pairs for
 // a cube, 18 for a pyramid) that will be uploaded to the GPU before its draw.
 const scene = [
     {   // HEAD
