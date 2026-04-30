@@ -6,6 +6,12 @@ var uScaleXLoc, uScaleYLoc, uScaleZLoc;
 var uLocalXLoc, uLocalYLoc, uLocalZLoc;
 var uColorLoc;
 
+// -- Animation timer and values ---
+var animTimer = 0.0;
+var animSpeed = 0.0;
+var songBPM = 110;
+var glowstickRotate = -75;
+
 // --- Slider state ---
 var sArmRightAngle = 0.0;
 var sArmLeftAngle  = 0.0;
@@ -355,20 +361,20 @@ const stage = [
          shape: 'cube',
         tx: 0.0,  ty: 0,   tz: 0.75,
         lx: 0.0,  ly: 0.0,   lz: 0.0,
-        rx: 0.0,  sx: 8,     sy: 6,    sz: 0.5,
+        rx: 0.0,  sx: 9,     sy: 5.5,    sz: 0.5,
         r: 69/255, g: 71/255, b: 74/255,
     },
     { //Stage Screen (LED)
         shape: 'cube',
         tx: 0.0,  ty: 0.0,   tz: 0.73,
         lx: 0.0,  ly: 0.0,   lz: 0.0,
-        rx: 0.0,  sx: 7,     sy: 5,    sz: 0.5,
+        rx: 0.0,  sx: 8,     sy: 4.5,    sz: 0.5,
         r: 1, g: 0, b: 0,
         useVideo: true,   // <-- signals drawObject to swap textures
         // Give it UVs covering the whole texture so the full video frame maps on
         uvs: new Float32Array(buildCubeUVs([
             { x: 0, y: 0, w: 64, h: 64 },  // front  — full frame
-            { x: 0, y: 0, w: 64, h: 64 },  // back
+            { x: 0, y: 0, w: 64, h: 64,  flipU: true },  // back
             { x: 0, y: 0, w: 64, h: 64 },  // left
             { x: 0, y: 0, w: 64, h: 64 },  // right
             { x: 0, y: 0, w: 64, h: 64 },  // top
@@ -377,6 +383,47 @@ const stage = [
     },
 
 ];
+
+const crowdFront = [];
+for (let i = 0; i < 6; i++){
+    x = -0.8 + i * 0.4;
+    crowdFront.push(
+        {//Arm
+            shape: 'cube',
+            tx: x,   ty: -0.95,   tz: -0.4,
+            lx: 0.0, ly: 0.0,  lz: 0.0,
+            rx: glowstickRotate, sx: 0.75, sy: 1.5, sz: 0.75,
+            r: 1, g: 0, b: 0,
+        },
+        {//Glowstick
+            shape: 'cube',
+            tx: x,   ty: -0.75,  tz: -0.4,
+            lx: 0.0, ly: 0.0,  lz: 0.0,
+            rx: glowstickRotate, sx: 0.5, sy:3, sz: 0.5,
+            r: 0, g: 1, b: 0.4,
+        }
+    )
+}
+const crowdBack = [];
+for (let i = 0; i < 5; i++) {
+    x = -0.8 + i * 0.4;
+    crowdBack.push(
+        { //Arm
+            shape: 'cube',
+            tx: x,   ty: -0.95,   tz: -0.9,
+            lx: 0.0, ly: 0.0,  lz: 0.0,
+            rx: glowstickRotate, sx: 0.75, sy: 1.5, sz: 0.75,
+            r: 1, g: 0, b: 0,
+        },
+        { //Glowstick
+            shape: 'cube',
+            tx: x,   ty: -0.75,  tz: -0.9,
+            lx: 0.0, ly: 0.0,  lz: 0.0,
+            rx: glowstickRotate, sx: 0.5, sy: 3, sz: 0.5,
+            r: 0.4, g: 0, b: 1,
+        }
+    );
+}
 
 // ---------------------------------------------------------------------------
 // initShaders: unchanged — compiles and links the GLSL program.
@@ -469,6 +516,10 @@ var program;
 var texcoordBuffer;          // the one UV buffer we re-upload each draw call
 var texcoordAttributeLocation;
 var uUseTextureLoc;
+var uLedModeLoc;
+var texture;
+var videoTex;
+var videoEl;
 
 window.onload = function init() {
     canvas  = document.getElementById("gl-canvas");
@@ -656,6 +707,7 @@ window.onload = function init() {
     uLocalYLoc = gl.getUniformLocation(program, "uLocalY");
     uLocalZLoc = gl.getUniformLocation(program, "uLocalZ");
     uColorLoc  = gl.getUniformLocation(program, "uColor");
+    uLedModeLoc = gl.getUniformLocation(program, "uLedMode");
 
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0.5, 0.5, 0.5, 1.0);
@@ -664,7 +716,7 @@ window.onload = function init() {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     // --- Texture setup (done ONCE here, not per frame) ---
-    const texture    = loadTexture(gl, kaito);
+    texture = loadTexture(gl, len);
     window.texture = texture;  
     const uTextureLoc = gl.getUniformLocation(program, "u_texture");
     // Activate texture unit 0 and bind our texture to it.
@@ -674,8 +726,8 @@ window.onload = function init() {
     gl.uniform1i(uTextureLoc, 0);
 
     // --- Video texture setup ---
-    const videoEl = document.getElementById("led-video");
-    const videoTex = gl.createTexture();
+    videoEl = document.getElementById("led-video");
+    videoTex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, videoTex);
 
     // Fill with a black placeholder until the video is ready
@@ -692,6 +744,17 @@ window.onload = function init() {
     // Make videoTex and videoEl accessible to render()
     window.videoTex = videoTex;
     window.videoEl  = videoEl;
+
+    // Browsers block autoplay until user interaction.
+    // Start the video on the first click or keypress anywhere on the page.
+    const startVideo = () => {
+        videoEl.play().catch(e => console.warn("Video play failed:", e));
+        // Remove listeners after first trigger — only need to start it once
+        window.removeEventListener('click',   startVideo);
+        window.removeEventListener('keydown', startVideo);
+    };
+    window.addEventListener('click',   startVideo);
+    window.addEventListener('keydown', startVideo);
 
     
 
@@ -734,6 +797,7 @@ function drawObject(obj) {
     gl.uniform1f(uLocalZLoc, obj.lz ?? 0.0);
     gl.uniform4f(uColorLoc,  obj.r, obj.g, obj.b, 1.0);
     gl.uniform1f(uUseTextureLoc, obj.uvs ? 1.0 : 0.0);
+    gl.uniform1f(uLedModeLoc, obj.useVideo ? 1.0 : 0.0);
 
     if (obj.shape === 'cube') {
         gl.drawArrays(gl.TRIANGLES, CUBE_FIRST, CUBE_COUNT);
@@ -746,7 +810,19 @@ function drawObject(obj) {
     }
 }
 
-function render() {
+function render(timestamp) {
+    animSpeed = songBPM/60;
+    if (animTimer <= animSpeed){
+        glowstickRotate += 145/(songBPM/60);
+    }
+    else if(animSpeed<animTimer<=animSpeed*2){
+        glowstickRotate -= 145/(songBPM/60)
+
+    }
+    else{
+        animTimer = 0;
+    }
+
     // Upload the current video frame to the GPU if the video is playing.
     // HAVE_ENOUGH_DATA (value 4) means there are pixels available to read.
     if (videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA) {
@@ -755,8 +831,8 @@ function render() {
                     gl.UNSIGNED_BYTE, videoEl);
         // Rebind skin texture to unit 0 so the figure still renders correctly
         gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture);  // 'texture' = your skin
-}
+        gl.bindTexture(gl.TEXTURE_2D, texture);  // 'texture' = your skin
+    }
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // Pass 1: all figure base layers
     for (const obj of scene) {
@@ -773,6 +849,14 @@ function render() {
     gl.depthMask(true);
     // Pass 3: Draw stage
     for (const obj of stage){
+        drawObject(obj);
+    }
+    // Pass 4: Draw front row glowsticks
+    for (const obj of crowdFront) {
+        drawObject(obj);
+    }
+    // Pass 5: Draw back row glowsticks
+    for (const obj of crowdBack) {
         drawObject(obj);
     }
 

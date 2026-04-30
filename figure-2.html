@@ -74,6 +74,7 @@ void main()
 
 precision mediump float;
 uniform float uUseTexture;
+uniform float uLedMode;
 uniform vec4 uColor;
 
 in vec2 vST;
@@ -83,7 +84,25 @@ out vec4 outColor;
 void main()
 {
     if (uUseTexture > 0.5){
-        outColor = texture(u_texture, vST);
+        vec4 texColor = texture(u_texture, vST);
+
+        if (uLedMode > 0.5) { //Checks if it is the screen; if so, it adds the LED screen texture overlay
+            vec2 ledGrid = vec2(72.0, 54.0);
+            vec2 cellUV = fract(vST * ledGrid) - 0.5;
+            float dist = length(cellUV);
+            float ledDot = 1.0 - smoothstep(0.18, 0.48, dist);
+
+            vec2 band = abs(cellUV);
+            float seam = smoothstep(0.42, 0.5, max(band.x, band.y));
+
+            vec3 ledColor = texColor.rgb * (0.18 + 1.2 * ledDot);
+            ledColor *= (1.0 - 0.18 * seam);
+            ledColor += texColor.rgb * 0.08;
+
+            outColor = vec4(min(ledColor, 1.0), texColor.a);
+        } else {
+            outColor = texColor;
+        }
     }
     else {
         outColor = uColor;
@@ -91,8 +110,9 @@ void main()
     
 }
 </script>
-<video id="led-video" src="https://github.com/EverettAM/GraphicsProject3/raw/refs/heads/main/superhero.mp4"
-       loop autoplay muted playsinline
+<video id="led-video" src="https://raw.githubusercontent.com/EverettAM/GraphicsProject3/main/superhero.mp4"
+       crossorigin = "anonymous"
+       loop autoplay playsinline
        style="display:none"></video>
 <canvas id="gl-canvas" width="512" height="512"></canvas>
 <script src="initShaders.js"></script>
